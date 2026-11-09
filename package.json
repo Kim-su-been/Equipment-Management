@@ -1,0 +1,26 @@
+{
+  "name": "tuip-on-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 5173",
+    "test": "node --test tests/workflow.test.js",
+    "test:browser": "playwright test",
+    "format": "prettier --write src tests *.js *.json index.html README.md"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.51.0",
+    "@vitejs/plugin-react": "^4.5.0",
+    "prettier": "^3.9.10",
+    "vite": "^7.0.0"
+  }
+}
