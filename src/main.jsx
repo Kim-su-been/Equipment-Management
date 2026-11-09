@@ -2,7 +2,7 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
 import "./styles.css";
-import "./composio-theme.css";
+import "./nike-theme.css";
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <App />

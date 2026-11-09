@@ -56,6 +56,8 @@ import {
   LoaderCircle,
   GripVertical,
   MousePointer2,
+  Save,
+  Undo2,
 } from "lucide-react";
 import {
   TASKS,
@@ -67,10 +69,18 @@ import {
   progress,
   isPrepared,
   canManage,
-  assignSeat,
   evidenceStatus,
-  moveSeat,
 } from "./data.js";
+
+import {
+  createSeatDraft,
+  stageSeatAssignment,
+  stageSeatMove,
+  stageSeatRelease,
+  stageSeatOffboarding,
+  getSeatChanges,
+  commitSeatDraft,
+} from "./seat-workspace.js";
 
 const STORAGE = "tuip-on-demo-v1";
 const NAV = [
@@ -254,6 +264,13 @@ export default function App() {
     [seatDate, setSeatDate] = useState(TODAY);
   const [chat, setChat] = useState([]),
     [chatInput, setChatInput] = useState("");
+  const [seatDrafts, setSeatDrafts] = useState({});
+  const activeSeatDraft = mode === "admin" ? seatDrafts[scope] || null : null;
+  const editableSeats = activeSeatDraft?.seats || data.seats;
+  const pendingSeatChanges = getSeatChanges(activeSeatDraft);
+  const hasSeatEdits =
+    pendingSeatChanges.length > 0 ||
+    (activeSeatDraft?.offboarding.length || 0) > 0;
   const [dragSeat, setDragSeat] = useState(null);
   const [dropSeat, setDropSeat] = useState(null);
   const seatDrag = useRef(null);
@@ -935,9 +952,13 @@ export default function App() {
         <div className="page-heading">
           <div>
             <div className="eyebrow">WORKSPACE OVERVIEW</div>
-            <h1>
-              한눈에 보는 투입 현황
-              <span className="heading-dot" />
+            <h1 className="campaign-title">
+              <span aria-hidden="true">
+                READY FOR
+                <br />
+                WHAT’S NEXT.
+              </span>
+              <span className="visually-hidden">한눈에 보는 투입 현황</span>
             </h1>
             <p>프로젝트의 시작부터, 모든 준비를 빈틈없이 연결하세요.</p>
           </div>
@@ -1522,8 +1543,61 @@ export default function App() {
       </>
     );
   }
+  function stageSeatEdit(edit) {
+    try {
+      const next = edit(activeSeatDraft || createSeatDraft(data, scope));
+      setSeatDrafts((all) => ({
+        ...all,
+        [scope]:
+          getSeatChanges(next).length || next.offboarding.length ? next : null,
+      }));
+      return true;
+    } catch (error) {
+      notify(error.message);
+      return false;
+    }
+  }
+  function saveSeatChanges() {
+    if (!activeSeatDraft || !hasSeatEdits) return;
+    let current = data;
+    try {
+      const stored = JSON.parse(localStorage.getItem(STORAGE));
+      if (stored?.versions) current = stored;
+    } catch {}
+    try {
+      const next = commitSeatDraft(current, activeSeatDraft, scope);
+      audit(
+        next,
+        `좌석 변경 ${pendingSeatChanges.length}건 저장`,
+        `공용 배치도 v${next.versions.at(-1).version}`,
+        "seat",
+      );
+      localStorage.setItem(STORAGE, JSON.stringify(next));
+      setData(next);
+      setSeatDrafts((all) => ({ ...all, [scope]: null }));
+      setSeatVersion(null);
+      notify(
+        `저장 완료 · ${pendingSeatChanges.length}건의 변경을 v${next.versions.at(-1).version}에 기록했습니다.`,
+      );
+    } catch (error) {
+      setData(current);
+      notify(error.message);
+    }
+  }
+  useEffect(() => {
+    const hasPending = Object.values(seatDrafts).some(
+      (d) => d && (getSeatChanges(d).length || d.offboarding.length),
+    );
+    if (!hasPending) return;
+    const warn = (event) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [seatDrafts]);
   function beginSeatDrag(event, id) {
-    const assignment = data.seats[id];
+    const assignment = editableSeats[id];
     const person = data.people.find((p) => p.id === assignment?.personId);
     const historical =
       seatVersion !== null && seatVersion !== data.versions.at(-1).version;
@@ -1563,40 +1637,23 @@ export default function App() {
       endSeatDrag();
       return notify("현재 역할 또는 과거 버전에서는 이동할 수 없습니다.");
     }
-    let current = data;
-    try {
-      const stored = JSON.parse(localStorage.getItem(STORAGE));
-      if (stored?.versions) current = stored;
-    } catch {}
-    try {
-      const next = moveSeat(current, { ...drag, toSeatId });
-      if (next !== current) {
-        audit(
-          next,
-          `${drag.personId} 좌석 이동`,
-          `${drag.fromSeatId} → ${toSeatId} · 배치도 v${next.versions.at(-1).version}`,
-          "seat",
-        );
-        setData(next);
-        setSeatVersion(null);
-        notify(
-          `${drag.personId} · ${drag.fromSeatId} → ${toSeatId} 이동 완료. 새 버전을 기록했습니다.`,
-        );
-      }
-    } catch (error) {
-      setData(current);
-      notify(error.message);
-    } finally {
-      endSeatDrag();
-    }
+    const changed = stageSeatEdit((draft) =>
+      stageSeatMove(data, draft, { ...drag, toSeatId }),
+    );
+    if (changed && drag.fromSeatId !== toSeatId)
+      notify(
+        `${drag.personId} · ${drag.fromSeatId} → ${toSeatId} 임시 이동. 저장 버튼으로 확정하세요.`,
+      );
+    endSeatDrag();
   }
+
   function Seats() {
     const version =
         data.versions.find((v) => v.version === seatVersion) ||
         data.versions.at(-1),
       historical =
         seatVersion !== null && seatVersion !== data.versions.at(-1).version;
-    const seats = historical ? version.seats : data.seats;
+    const seats = historical ? version.seats : editableSeats;
     const zones = seatZone === "전체 구역" ? ["A", "B"] : [seatZone[0]];
     const occupied = Object.values(seats).filter(
       (v) => v && v.start <= seatDate && v.end >= seatDate,
@@ -1610,16 +1667,39 @@ export default function App() {
           title="좌석 관리"
           desc="하나의 배치도에서, 모든 프로젝트의 업무 공간을 함께 관리하세요."
           actions={
-            <Btn
-              icon={Plus}
-              variant="primary"
-              disabled={historical}
-              onClick={() =>
-                setModal({ type: "assign", base: data.versions.at(-1).version })
-              }
-            >
-              좌석 배정
-            </Btn>
+            <>
+              {hasSeatEdits && (
+                <Btn
+                  icon={Undo2}
+                  onClick={() => setModal({ type: "discardSeat" })}
+                >
+                  변경 취소
+                </Btn>
+              )}
+              <Btn
+                icon={Plus}
+                disabled={historical}
+                onClick={() =>
+                  setModal({
+                    type: "assign",
+                    base:
+                      activeSeatDraft?.baseVersion ||
+                      data.versions.at(-1).version,
+                  })
+                }
+              >
+                좌석 배정
+              </Btn>
+              <Btn
+                icon={Save}
+                variant="primary"
+                disabled={historical || !hasSeatEdits}
+                onClick={saveSeatChanges}
+              >
+                변경 저장
+                {hasSeatEdits ? ` · ${pendingSeatChanges.length}건` : ""}
+              </Btn>
+            </>
           }
         />
         <div className="seat-status-bar">
@@ -1648,6 +1728,38 @@ export default function App() {
               : `최신 v${data.versions.at(-1).version}`}
           </span>
         </div>
+        {hasSeatEdits && (
+          <div
+            className={cx(
+              "seat-draft-banner",
+              activeSeatDraft.baseVersion !== data.versions.at(-1).version &&
+                "conflict",
+            )}
+          >
+            <span className="draft-banner-icon">
+              <Layers size={20} />
+            </span>
+            <div>
+              <strong>
+                {activeSeatDraft.baseVersion !== data.versions.at(-1).version
+                  ? "다른 관리자가 새 버전을 저장했습니다"
+                  : `${pendingSeatChanges.length}건의 변경사항이 아직 저장되지 않았어요`}
+              </strong>
+              <p>
+                {activeSeatDraft.baseVersion !== data.versions.at(-1).version
+                  ? "임시 편집은 유지됩니다. 내용을 확인한 뒤 변경을 취소하고 최신 배치도에서 다시 적용해 주세요."
+                  : `v${activeSeatDraft.baseVersion} 기준 임시 편집 · 저장하면 한 번에 새 버전으로 기록됩니다. 다른 관리자에게는 저장 전 배치도가 표시됩니다.`}
+              </p>
+            </div>
+            <button
+              className="text-link"
+              onClick={() => setModal({ type: "seatChanges" })}
+            >
+              변경 내역
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        )}
         <div className="seat-layout">
           <section className="card floor-card">
             <div className="floor-toolbar">
@@ -1694,8 +1806,8 @@ export default function App() {
                 <div>
                   <strong>인원을 드래그해 빈 좌석으로 옮겨보세요</strong>
                   <p>
-                    이동 즉시 최신 배치도와 버전 기록에 반영됩니다. 클릭으로도
-                    배정을 변경할 수 있어요.
+                    원하는 만큼 편집한 뒤 변경 저장을 누르세요. 저장할 때만 새
+                    버전이 생성됩니다. 클릭으로도 배정을 변경할 수 있어요.
                   </p>
                 </div>
                 <span className="drag-shortcut">
@@ -1834,6 +1946,29 @@ export default function App() {
                 </div>
               </div>
             </div>
+            {!historical && (
+              <div className="seat-save-bar">
+                <div>
+                  <span
+                    className={cx("save-state-dot", hasSeatEdits && "dirty")}
+                  />
+                  <span>
+                    {hasSeatEdits
+                      ? `${pendingSeatChanges.length}건 미저장`
+                      : `저장된 배치도 v${data.versions.at(-1).version}`}
+                  </span>
+                  <small>임시 편집은 현재 탭·역할에만 유지됩니다.</small>
+                </div>
+                <Btn
+                  icon={Save}
+                  variant="primary"
+                  disabled={!hasSeatEdits}
+                  onClick={saveSeatChanges}
+                >
+                  변경 저장
+                </Btn>
+              </div>
+            )}
             <div className="map-legend">
               <span>
                 <b className="legend-swatch sfa" />
@@ -1900,7 +2035,7 @@ export default function App() {
               <p>
                 모든 관리자가 같은 원장을 사용합니다.
                 <br />
-                변경 시 새로운 버전이 생성됩니다.
+                저장 버튼을 누를 때만 새 버전이 생성됩니다.
               </p>
             </div>
           </aside>
@@ -2821,44 +2956,27 @@ export default function App() {
     if (modal.type === "assign")
       return (
         <SeatAssignForm
-          data={data}
+          data={{ ...data, seats: editableSeats }}
           scope={scope}
           initial={modal}
           onClose={close}
           onSubmit={(args) => {
-            let current = data;
-            try {
-              const stored = JSON.parse(localStorage.getItem(STORAGE));
-              if (stored?.versions) current = stored;
-            } catch {}
-            if (current.versions.at(-1).version !== modal.base) {
-              setData(current);
+            if (
+              stageSeatEdit((draft) =>
+                stageSeatAssignment(data, draft, { ...args, scope }),
+              )
+            ) {
               close();
-              return notify(
-                "배치도가 변경되었습니다. 최신 버전을 확인한 후 다시 배정해 주세요.",
+              notify(
+                "좌석 배정을 임시 반영했습니다. 변경 저장을 눌러 확정하세요.",
               );
-            }
-            try {
-              const next = assignSeat(current, { ...args, scope });
-              audit(
-                next,
-                `${args.personId} 좌석 배정 완료`,
-                `${args.seatId} · 공용 배치도 v${next.versions.at(-1).version}`,
-                "seat",
-              );
-              setData(next);
-              setSeatVersion(null);
-              close();
-              notify("좌석을 배정하고 새 버전을 저장했습니다.");
-            } catch (e) {
-              notify(e.message);
             }
           }}
         />
       );
     if (modal.type === "seatInfo") {
       const v = data.versions.find((v) => v.version === modal.version);
-      const seats = v?.seats || data.seats,
+      const seats = v?.seats || editableSeats,
         s = seats[modal.seat],
         person = data.people.find((p) => p.id === s?.personId),
         editable = !v && (!person || canEdit(person));
@@ -2914,27 +3032,19 @@ export default function App() {
               <Btn
                 variant="danger"
                 onClick={() => {
-                  mutate((d) => {
-                    d.seats[modal.seat] = null;
-                    d.versions.push({
-                      version: d.versions.at(-1).version + 1,
-                      by:
-                        scope === "PMO"
-                          ? "PMO"
-                          : `${scope === "SFA" ? "SFA" : "GW"}-담당자`,
-                      date: new Date().toLocaleString("ko-KR"),
-                      reason: `${person.id} · ${modal.seat} 배정 해제`,
-                      seats: structuredClone(d.seats),
-                    });
-                    audit(
-                      d,
-                      `${person.id} 좌석 배정 해제`,
-                      `${modal.seat} · 준비 상태 재계산`,
-                      "seat",
+                  if (
+                    stageSeatEdit((draft) =>
+                      stageSeatRelease(data, draft, {
+                        seatId: modal.seat,
+                        scope,
+                      }),
+                    )
+                  ) {
+                    close();
+                    notify(
+                      "배정 해제를 임시 반영했습니다. 변경 저장을 눌러 확정하세요.",
                     );
-                  });
-                  close();
-                  notify("배정을 해제하고 새 버전을 기록했습니다.");
+                  }
                 }}
               >
                 배정 해제
@@ -3093,37 +3203,100 @@ export default function App() {
           onClose={close}
           onConfirm={() => {
             if (!canEdit(p)) return;
-            mutate((d) => {
-              const person = d.people.find((x) => x.id === p.id);
-              person.lifecycle = "철수 완료";
-              person.history.unshift({
-                text: "계정 정리·좌석 반납 확인, 철수 완료",
-                date: new Date().toLocaleString("ko-KR"),
-              });
-              let changed = false;
-              for (const id of Object.keys(d.seats))
-                if (d.seats[id]?.personId === p.id) {
-                  d.seats[id] = null;
-                  changed = true;
-                }
-              if (changed)
-                d.versions.push({
-                  version: d.versions.at(-1).version + 1,
-                  by: scope,
-                  date: new Date().toLocaleString("ko-KR"),
-                  reason: `${p.id} 철수 · 좌석 반납`,
-                  seats: structuredClone(d.seats),
-                });
-              audit(
-                d,
-                `${p.id} 철수 완료`,
-                "계정 정리·좌석 반납을 담당자가 확인",
+            if (
+              stageSeatEdit((draft) =>
+                stageSeatOffboarding(data, draft, { personId: p.id, scope }),
+              )
+            ) {
+              close();
+              setPage("seats");
+              setSeatVersion(null);
+              notify(
+                "철수·좌석 반납을 임시 반영했습니다. 변경 저장을 누르면 함께 확정됩니다.",
               );
-            });
-            close();
-            notify("철수를 완료하고 좌석을 반납 처리했습니다.");
+            }
           }}
         />
+      );
+    if (modal.type === "seatChanges")
+      return (
+        <Modal
+          title="저장 전 변경 내역"
+          subtitle={`기준 배치도 v${activeSeatDraft?.baseVersion} · 아직 다른 관리자에게 반영되지 않았습니다.`}
+          onClose={close}
+        >
+          <div className="modal-body seat-change-list">
+            {pendingSeatChanges.map((c) => (
+              <div key={c.personId}>
+                <span className="draft-change-kind">{c.kind}</span>
+                <div>
+                  <strong>{c.personId}</strong>
+                  <p>
+                    {c.fromSeatId || "미배정"} <ArrowRight size={13} />{" "}
+                    {c.toSeatId || "배정 해제"}
+                  </p>
+                  {c.after && (
+                    <small>
+                      {fmt(c.after.start)} ~ {fmt(c.after.end)}
+                    </small>
+                  )}
+                </div>
+              </div>
+            ))}
+            {activeSeatDraft?.offboarding.map((id) => (
+              <div key={`off-${id}`}>
+                <span className="draft-change-kind">철수</span>
+                <div>
+                  <strong>{id}</strong>
+                  <p>저장 시 철수 완료·좌석 반납 확정</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <footer>
+            <Btn onClick={close}>닫기</Btn>
+            <Btn
+              variant="primary"
+              icon={Save}
+              onClick={() => {
+                saveSeatChanges();
+                close();
+              }}
+            >
+              변경 저장
+            </Btn>
+          </footer>
+        </Modal>
+      );
+    if (modal.type === "discardSeat")
+      return (
+        <Modal
+          title="임시 변경을 취소할까요?"
+          subtitle="아직 저장하지 않은 좌석 변경과 철수 확인이 취소됩니다."
+          onClose={close}
+        >
+          <div className="modal-body">
+            <div className="notice">
+              <Undo2 size={19} />
+              저장된 최신 배치도와 기존 버전 이력은 유지됩니다. 임시 편집만
+              취소합니다.
+            </div>
+          </div>
+          <footer>
+            <Btn onClick={close}>계속 편집</Btn>
+            <Btn
+              variant="primary"
+              onClick={() => {
+                setSeatDrafts((all) => ({ ...all, [scope]: null }));
+                setSeatVersion(null);
+                close();
+                notify("임시 변경을 취소하고 최신 배치도로 돌아왔습니다.");
+              }}
+            >
+              임시 변경 취소
+            </Btn>
+          </footer>
+        </Modal>
       );
     if (modal.type === "reset")
       return (
@@ -3147,6 +3320,7 @@ export default function App() {
                 Object.values(urls.current).forEach(URL.revokeObjectURL);
                 urls.current = {};
                 setData(seed());
+                setSeatDrafts({});
                 setMemberId("SFA-3");
                 setSeatVersion(null);
                 setChat([]);
@@ -4170,7 +4344,7 @@ function SeatAssignForm({ data, scope, initial, onClose, onSubmit }) {
   return (
     <Modal
       title="좌석 배정"
-      subtitle={`공용 배치도 v${initial.base}를 기준으로 배정합니다.`}
+      subtitle={`배치도 v${initial.base} 기준 임시 배정 · 변경 저장 시 확정됩니다.`}
       onClose={onClose}
     >
       <form
@@ -4257,7 +4431,8 @@ function SeatAssignForm({ data, scope, initial, onClose, onSubmit }) {
           {error && <div className="notice error full-field">{error}</div>}
           <div className="notice full-field">
             <History size={17} />
-            배정하면 모든 관리자 화면에 반영되고 새 버전 이력이 생성됩니다.
+            좌석 배정은 임시 반영되며, 변경 저장을 누르면 모든 관리자 화면에
+            반영되고 새 버전이 생성됩니다.
           </div>
         </div>
         <footer>
@@ -4773,8 +4948,9 @@ function OffboardDialog({ person, onClose, onConfirm }) {
       <div className="modal-body">
         <div className="notice">
           <AlertTriangle size={18} />
-          확인 시 배정 좌석이 해제되고 새 배치도 버전이 생성됩니다. 이
-          프로토타입이 외부 계정을 실제 삭제하지는 않습니다.
+          확인 결과는 임시 반영됩니다. 좌석 관리의 변경 저장을 누르면 철수와
+          좌석 반납이 함께 확정되고 새 버전이 생성됩니다. 이 프로토타입이 외부
+          계정을 실제 삭제하지는 않습니다.
         </div>
         {[
           "철수 예정일과 반납 대상을 확인했습니다.",

@@ -205,6 +205,14 @@ test("shared seat layout adds versions, syncs other tabs and preserves history",
     page.getByRole("button", { name: "A-02 SFA-3", exact: true }),
   ).toBeVisible();
   await expect(
+    other.getByRole("button", { name: "A-02 미배정", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".seat-status-bar")).toContainText("최신 v4");
+  await page
+    .locator(".seat-save-bar")
+    .getByRole("button", { name: "변경 저장", exact: true })
+    .click();
+  await expect(
     other.getByRole("button", { name: "A-02 SFA-3", exact: true }),
   ).toBeVisible();
   await expect(other.locator(".seat-status-bar")).toContainText("최신 v5");
@@ -404,9 +412,15 @@ test("dragging a seat moves the person and updates shared version history", asyn
   await expect(
     page.getByRole("button", { name: "A-01 미배정", exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".versions-card")).toContainText(
-    "A-01 → A-04 드래그 이동",
-  );
+  await expect(page.locator(".seat-status-bar")).toContainText("최신 v4");
+  await expect(
+    other.getByRole("button", { name: "A-01 SFA-1", exact: true }),
+  ).toBeVisible();
+  await page
+    .locator(".seat-save-bar")
+    .getByRole("button", { name: "변경 저장", exact: true })
+    .click();
+  await expect(page.locator(".versions-card")).toContainText("1건 변경 저장");
   await expect(page.locator(".seat-status-bar")).toContainText("최신 v5");
   await expect(
     other.getByRole("button", { name: "A-04 SFA-1", exact: true }),
@@ -438,4 +452,165 @@ test("occupied destinations cannot be replaced by a drag", async ({ page }) => {
     page.getByRole("button", { name: "B-01 GW-1", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".seat-status-bar")).toContainText("최신 v4");
+});
+
+test("multiple drag edits are saved as one version and cancel preserves the original", async ({
+  page,
+}) => {
+  await page
+    .locator(".sidebar")
+    .getByRole("button", { name: "좌석 관리", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "A-01 SFA-1", exact: true })
+    .dragTo(page.getByRole("button", { name: "A-04 미배정", exact: true }));
+  await page
+    .getByRole("button", { name: "B-01 GW-1", exact: true })
+    .dragTo(page.getByRole("button", { name: "B-03 미배정", exact: true }));
+  await expect(page.locator(".version-item")).toHaveCount(4);
+  await expect(page.locator(".seat-draft-banner")).toContainText(
+    "2건의 변경사항",
+  );
+  await page.getByRole("button", { name: "변경 취소", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "임시 변경 취소", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "A-01 SFA-1", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".version-item")).toHaveCount(4);
+  await expect(
+    page
+      .locator(".seat-save-bar")
+      .getByRole("button", { name: "변경 저장", exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByRole("button", { name: "A-01 SFA-1", exact: true })
+    .dragTo(page.getByRole("button", { name: "A-04 미배정", exact: true }));
+  await page
+    .getByRole("button", { name: "B-01 GW-1", exact: true })
+    .dragTo(page.getByRole("button", { name: "B-03 미배정", exact: true }));
+  await page
+    .locator(".seat-save-bar")
+    .getByRole("button", { name: "변경 저장", exact: true })
+    .click();
+  await expect(page.locator(".version-item")).toHaveCount(5);
+  await expect(page.locator(".versions-card")).toContainText("2건 변경 저장");
+  await page.locator(".version-item").filter({ hasText: "v4" }).click();
+  await expect(
+    page.getByRole("button", { name: "A-01 SFA-1", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "B-01 GW-1", exact: true }),
+  ).toBeVisible();
+});
+test("concurrent save retains the local draft and prevents a stale overwrite", async ({
+  page,
+  context,
+}) => {
+  await page.getByLabel("주관사 역할 선택").selectOption("SFA");
+  await page
+    .locator(".sidebar")
+    .getByRole("button", { name: "좌석 관리", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "A-01 SFA-1", exact: true })
+    .dragTo(page.getByRole("button", { name: "A-04 미배정", exact: true }));
+  const other = await context.newPage();
+  await other.goto("/");
+  await other.getByLabel("주관사 역할 선택").selectOption("그룹웨어");
+  await other
+    .locator(".sidebar")
+    .getByRole("button", { name: "좌석 관리", exact: true })
+    .click();
+  await other
+    .getByRole("button", { name: "B-01 GW-1", exact: true })
+    .dragTo(other.getByRole("button", { name: "B-03 미배정", exact: true }));
+  await other
+    .locator(".seat-save-bar")
+    .getByRole("button", { name: "변경 저장", exact: true })
+    .click();
+  await expect(page.locator(".seat-draft-banner")).toContainText(
+    "다른 관리자가",
+  );
+  await page
+    .locator(".seat-save-bar")
+    .getByRole("button", { name: "변경 저장", exact: true })
+    .click();
+  await expect(page.locator(".version-item")).toHaveCount(5);
+  await expect(
+    page.getByRole("button", { name: "A-04 SFA-1", exact: true }),
+  ).toBeVisible();
+  await expect(
+    other.getByRole("button", { name: "A-01 SFA-1", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "변경 취소", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "임시 변경 취소", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "A-01 SFA-1", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "B-03 GW-1", exact: true }),
+  ).toBeVisible();
+  await other.close();
+});
+
+test("release and offboarding stay staged until the seat Save action", async ({
+  page,
+}) => {
+  await page
+    .locator(".sidebar")
+    .getByRole("button", { name: "좌석 관리", exact: true })
+    .click();
+  await page.getByRole("button", { name: "A-01 SFA-1", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "배정 해제", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "A-01 미배정", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".version-item")).toHaveCount(4);
+  await page.getByRole("button", { name: "변경 취소", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "임시 변경 취소", exact: true })
+    .click();
+  await page
+    .locator(".sidebar")
+    .getByRole("button", { name: "인원 명단", exact: true })
+    .click();
+  await page.locator("tbody tr").filter({ hasText: "SFA-1" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "기본 정보", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "철수 처리", exact: true })
+    .click();
+  for (const box of await page.getByRole("dialog").getByRole("checkbox").all())
+    await box.check();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "철수 완료", exact: true })
+    .click();
+  await expect(page.locator("h1")).toHaveText("좌석 관리");
+  await expect(page.locator(".version-item")).toHaveCount(4);
+  await page
+    .locator(".seat-save-bar")
+    .getByRole("button", { name: "변경 저장", exact: true })
+    .click();
+  await expect(page.locator(".version-item")).toHaveCount(5);
+  await page
+    .locator(".sidebar")
+    .getByRole("button", { name: "인원 명단", exact: true })
+    .click();
+  await expect(
+    page.locator("tbody tr").filter({ hasText: "SFA-1" }),
+  ).toContainText("철수 완료");
 });
