@@ -393,3 +393,29 @@ export function evidenceStatus(person, id, seats) {
         (person.files[id] ? "done" : taskStatus(person, id, seats))
     : taskStatus(person, id, seats);
 }
+
+/** Move an existing assignment without changing its dates or other projects. */
+export function moveSeat(
+  data,
+  { fromSeatId, toSeatId, personId, scope, baseVersion },
+) {
+  if (data.versions.at(-1).version !== baseVersion)
+    throw new Error(
+      "배치도가 변경되었습니다. 최신 버전을 확인한 뒤 다시 이동해 주세요.",
+    );
+  const source = data.seats[fromSeatId];
+  if (!source || source.personId !== personId)
+    throw new Error("원래 좌석의 배정이 변경되었습니다. 다시 확인해 주세요.");
+  const person = data.people.find((p) => p.id === personId);
+  if (!person || !canManage(scope, person) || person.lifecycle === "철수 완료")
+    throw new Error("이 인원의 좌석을 이동할 권한이 없습니다.");
+  if (fromSeatId === toSeatId) return data;
+  return assignSeat(data, {
+    seatId: toSeatId,
+    personId,
+    scope,
+    start: source.start,
+    end: source.end,
+    reason: `${personId} · ${fromSeatId} → ${toSeatId} 드래그 이동`,
+  });
+}

@@ -54,6 +54,8 @@ import {
   Eye,
   Monitor,
   LoaderCircle,
+  GripVertical,
+  MousePointer2,
 } from "lucide-react";
 import {
   TASKS,
@@ -67,6 +69,7 @@ import {
   canManage,
   assignSeat,
   evidenceStatus,
+  moveSeat,
 } from "./data.js";
 
 const STORAGE = "tuip-on-demo-v1";
@@ -251,6 +254,10 @@ export default function App() {
     [seatDate, setSeatDate] = useState(TODAY);
   const [chat, setChat] = useState([]),
     [chatInput, setChatInput] = useState("");
+  const [dragSeat, setDragSeat] = useState(null);
+  const [dropSeat, setDropSeat] = useState(null);
+  const seatDrag = useRef(null);
+  const suppressSeatClick = useRef(0);
   const toastTimer = useRef(),
     urls = useRef({});
   const admin = mode === "admin",
@@ -1515,6 +1522,74 @@ export default function App() {
       </>
     );
   }
+  function beginSeatDrag(event, id) {
+    const assignment = data.seats[id];
+    const person = data.people.find((p) => p.id === assignment?.personId);
+    const historical =
+      seatVersion !== null && seatVersion !== data.versions.at(-1).version;
+    if (
+      !admin ||
+      historical ||
+      !person ||
+      !canEdit(person) ||
+      person.lifecycle === "철수 완료"
+    ) {
+      event.preventDefault();
+      return;
+    }
+    seatDrag.current = {
+      fromSeatId: id,
+      personId: person.id,
+      scope,
+      baseVersion: data.versions.at(-1).version,
+    };
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("application/x-tuipon-seat", id);
+    setDragSeat(id);
+  }
+  function endSeatDrag() {
+    seatDrag.current = null;
+    setDragSeat(null);
+    setDropSeat(null);
+    suppressSeatClick.current = Date.now() + 250;
+  }
+  function dropSeatAssignment(event, toSeatId) {
+    event.preventDefault();
+    const drag = seatDrag.current;
+    if (!drag) return;
+    const historical =
+      seatVersion !== null && seatVersion !== data.versions.at(-1).version;
+    if (!admin || historical || scope !== drag.scope) {
+      endSeatDrag();
+      return notify("현재 역할 또는 과거 버전에서는 이동할 수 없습니다.");
+    }
+    let current = data;
+    try {
+      const stored = JSON.parse(localStorage.getItem(STORAGE));
+      if (stored?.versions) current = stored;
+    } catch {}
+    try {
+      const next = moveSeat(current, { ...drag, toSeatId });
+      if (next !== current) {
+        audit(
+          next,
+          `${drag.personId} 좌석 이동`,
+          `${drag.fromSeatId} → ${toSeatId} · 배치도 v${next.versions.at(-1).version}`,
+          "seat",
+        );
+        setData(next);
+        setSeatVersion(null);
+        notify(
+          `${drag.personId} · ${drag.fromSeatId} → ${toSeatId} 이동 완료. 새 버전을 기록했습니다.`,
+        );
+      }
+    } catch (error) {
+      setData(current);
+      notify(error.message);
+    } finally {
+      endSeatDrag();
+    }
+  }
   function Seats() {
     const version =
         data.versions.find((v) => v.version === seatVersion) ||
@@ -1611,7 +1686,24 @@ export default function App() {
                 </button>
               </div>
             )}
-            <div className="floor-map">
+            {!historical && (
+              <div className="drag-instruction">
+                <span className="drag-instruction-icon">
+                  <MousePointer2 size={18} />
+                </span>
+                <div>
+                  <strong>인원을 드래그해 빈 좌석으로 옮겨보세요</strong>
+                  <p>
+                    이동 즉시 최신 배치도와 버전 기록에 반영됩니다. 클릭으로도
+                    배정을 변경할 수 있어요.
+                  </p>
+                </div>
+                <span className="drag-shortcut">
+                  <GripVertical size={14} /> DRAG & DROP
+                </span>
+              </div>
+            )}
+            <div className={cx("floor-map", dragSeat && "drag-active")}>
               <div className="office-top">
                 <span>MEETING ROOM</span>
                 <span>LOUNGE & PANTRY</span>
@@ -1651,21 +1743,69 @@ export default function App() {
                               key={id}
                               className={cx(
                                 "desk",
+                                dragSeat === id && "dragging",
+                                dropSeat === id && !assignment && "drop-target",
+                                dropSeat === id &&
+                                  assignment &&
+                                  dragSeat !== id &&
+                                  "drop-blocked",
                                 p && (p.project === "SFA" ? "sfa" : "gw"),
                                 future && "reserved",
                                 !active && !future && "available",
                               )}
                               aria-label={`${id} ${p?.id || "미배정"}`}
-                              onClick={() =>
+                              draggable={Boolean(
+                                !historical &&
+                                p &&
+                                canEdit(p) &&
+                                p.lifecycle !== "철수 완료",
+                              )}
+                              title={
+                                !historical && p && canEdit(p)
+                                  ? `${p.id}을 빈 좌석으로 드래그하거나 클릭해 변경`
+                                  : historical
+                                    ? "과거 버전 · 읽기 전용"
+                                    : p
+                                      ? "배정 정보 보기"
+                                      : "빈 좌석 · 인원을 끌어 놓으세요"
+                              }
+                              onDragStart={(e) => beginSeatDrag(e, id)}
+                              onDragEnd={endSeatDrag}
+                              onDragOver={(e) => {
+                                if (!seatDrag.current || historical) return;
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect =
+                                  !assignment || id === dragSeat
+                                    ? "move"
+                                    : "none";
+                                if (dropSeat !== id) setDropSeat(id);
+                              }}
+                              onDragLeave={(e) => {
+                                if (!e.currentTarget.contains(e.relatedTarget))
+                                  setDropSeat(null);
+                              }}
+                              onDrop={(e) => dropSeatAssignment(e, id)}
+                              onClick={() => {
+                                if (Date.now() < suppressSeatClick.current)
+                                  return;
                                 setModal({
                                   type: "seatInfo",
                                   seat: id,
                                   version: historical ? version.version : null,
-                                })
-                              }
+                                });
+                              }}
                             >
                               <span className="desk-top">
                                 <Monitor size={18} />
+                                {!historical &&
+                                  p &&
+                                  canEdit(p) &&
+                                  p.lifecycle !== "철수 완료" && (
+                                    <GripVertical
+                                      size={13}
+                                      className="desk-grip"
+                                    />
+                                  )}
                                 <span>{id}</span>
                               </span>
                               <strong>{p?.id || "미배정"}</strong>

@@ -1,1 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48"><rect width="48" height="48" rx="13" fill="#c3e9bf"/><text x="7" y="33" fill="#234938" font-family="Arial,sans-serif" font-weight="800" font-size="30" letter-spacing="-3">on</text><circle cx="36" cy="38" r="3" fill="#234938"/></svg>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="48"
+  height="48"
+  viewBox="0 0 48 48"
+>
+  <rect width="48" height="48" rx="13" fill="#0007cd" />
+  <text
+    x="7"
+    y="33"
+    fill="#ffffff"
+    font-family="Arial,sans-serif"
+    font-weight="800"
+    font-size="30"
+    letter-spacing="-3"
+  >
+    on
+  </text>
+  <circle cx="36" cy="38" r="3" fill="#ffffff" />
+</svg>

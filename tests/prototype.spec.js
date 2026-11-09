@@ -302,15 +302,12 @@ test("Excel template, validation, import and export are functional", async ({
   const downloaded = await event;
   const { readFile } = await import("node:fs/promises");
   const buffer = await readFile(await downloaded.path());
-  await page
-    .getByRole("dialog")
-    .locator("input[type=file]")
-    .setInputFiles({
-      name: "인원등록.xlsx",
-      mimeType:
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      buffer,
-    });
+  await page.getByRole("dialog").locator("input[type=file]").setInputFiles({
+    name: "인원등록.xlsx",
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    buffer,
+  });
   await expect(page.getByRole("dialog")).toContainText("검증 완료");
   await page
     .getByRole("button", { name: "등록 확정 · 1명", exact: true })
@@ -378,4 +375,67 @@ test("certificate rework resets completion and reaches the member", async ({
     .getByRole("button", { name: "교육", exact: true })
     .click();
   await expect(page.locator(".education-card").first()).toContainText("미완료");
+});
+
+test("dragging a seat moves the person and updates shared version history", async ({
+  page,
+  context,
+}) => {
+  await page.getByLabel("주관사 역할 선택").selectOption("SFA");
+  await page
+    .locator(".sidebar")
+    .getByRole("button", { name: "좌석 관리", exact: true })
+    .click();
+  const other = await context.newPage();
+  await other.goto("/");
+  await other.getByLabel("주관사 역할 선택").selectOption("그룹웨어");
+  await other
+    .locator(".sidebar")
+    .getByRole("button", { name: "좌석 관리", exact: true })
+    .click();
+  const source = page.getByRole("button", { name: "A-01 SFA-1", exact: true });
+  await expect(source).toHaveAttribute("draggable", "true");
+  await source.dragTo(
+    page.getByRole("button", { name: "A-04 미배정", exact: true }),
+  );
+  await expect(
+    page.getByRole("button", { name: "A-04 SFA-1", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "A-01 미배정", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".versions-card")).toContainText(
+    "A-01 → A-04 드래그 이동",
+  );
+  await expect(page.locator(".seat-status-bar")).toContainText("최신 v5");
+  await expect(
+    other.getByRole("button", { name: "A-04 SFA-1", exact: true }),
+  ).toBeVisible();
+  await expect(
+    other.getByRole("button", { name: "A-04 SFA-1", exact: true }),
+  ).toHaveAttribute("draggable", "false");
+  await page.locator(".version-item").filter({ hasText: "v4" }).click();
+  await expect(
+    page.getByRole("button", { name: "A-01 SFA-1", exact: true }),
+  ).toHaveAttribute("draggable", "false");
+  await expect(
+    page.getByRole("button", { name: "A-04 미배정", exact: true }),
+  ).toBeVisible();
+  await other.close();
+});
+test("occupied destinations cannot be replaced by a drag", async ({ page }) => {
+  await page
+    .locator(".sidebar")
+    .getByRole("button", { name: "좌석 관리", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "A-01 SFA-1", exact: true })
+    .dragTo(page.getByRole("button", { name: "B-01 GW-1", exact: true }));
+  await expect(
+    page.getByRole("button", { name: "A-01 SFA-1", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "B-01 GW-1", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".seat-status-bar")).toContainText("최신 v4");
 });
