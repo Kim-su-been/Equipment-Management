@@ -82,6 +82,8 @@ import {
   commitSeatDraft,
 } from "./seat-workspace.js";
 
+import BrandCharacters from "./BrandCharacters.jsx";
+
 const STORAGE = "tuip-on-demo-v1";
 const NAV = [
   ["dashboard", "전체 현황", LayoutDashboard],
@@ -129,8 +131,11 @@ function Empty({
 }) {
   return (
     <div className="empty">
-      <div className="empty-icon">
-        <Icon size={26} />
+      <div className="empty-character">
+        <BrandCharacters focus="bear" />
+        <span className="empty-icon">
+          <Icon size={20} />
+        </span>
       </div>
       <h3>{title}</h3>
       <p>{desc}</p>
@@ -949,18 +954,18 @@ export default function App() {
     const needs = scoped.filter((p) => !isPrepared(p, data.seats)).slice(0, 4);
     return (
       <>
-        <div className="page-heading">
-          <div>
-            <div className="eyebrow">WORKSPACE OVERVIEW</div>
+        <section className="page-heading dashboard-welcome">
+          <div className="welcome-copy">
+            <div className="eyebrow">TOGETHER, READY FOR YOUR NEXT</div>
+            <p className="welcome-kicker">함께 준비하는 프로젝트의 첫 시작</p>
             <h1 className="campaign-title">
-              <span aria-hidden="true">
-                READY FOR
-                <br />
-                WHAT’S NEXT.
-              </span>
-              <span className="visually-hidden">한눈에 보는 투입 현황</span>
+              한눈에 보는 투입 현황
+              <span className="heading-dot" />
             </h1>
-            <p>프로젝트의 시작부터, 모든 준비를 빈틈없이 연결하세요.</p>
+            <p>새로운 시작의 모든 준비를, 투입ON과 차근차근 연결해 보세요.</p>
+          </div>
+          <div className="welcome-visual">
+            <BrandCharacters label="함께 프로젝트의 시작을 준비하는 캐릭터들" />
           </div>
           <Btn
             icon={Plus}
@@ -969,7 +974,11 @@ export default function App() {
           >
             인원 등록
           </Btn>
-        </div>
+          <div className="brand-one-motif" aria-hidden="true">
+            <i />
+            <b />
+          </div>
+        </section>
         <div className="date-strip">
           <div>
             <CalendarDays size={15} />
@@ -1107,8 +1116,8 @@ export default function App() {
           </section>
         </div>
         <div className="ai-banner">
-          <div className="ai-banner-icon">
-            <Sparkles size={24} />
+          <div className="ai-banner-character">
+            <BrandCharacters focus="guide" />
           </div>
           <div>
             <span>YOUR PMO ASSISTANT</span>
@@ -2192,18 +2201,9 @@ export default function App() {
                 : `필수 준비 ${TASKS.filter((t) => !["O01", "O12", "O16"].includes(t.id) && taskStatus(member, t.id, data.seats) === "done").length}/13 완료`}
             </div>
           </div>
-          <div className="hero-illustration">
-            <div className="illustration-circle" />
-            <div className="illustration-sheet">
-              <span />
-              <span />
-              <span />
-              <div>
-                <Check size={33} />
-              </div>
-            </div>
-            <Sparkles className="illustration-spark" size={28} />
-            <div className="illustration-dot" />
+          <div className="hero-illustration member-cast">
+            <BrandCharacters label="프로젝트의 첫 시작을 응원하는 캐릭터들" />
+            <span>우리 함께, 준비 ON!</span>
           </div>
         </section>
         <div className="member-quick-grid">
@@ -3509,6 +3509,7 @@ export default function App() {
         )}
         <div className="sidebar-bottom">
           <div className="sidebar-ai">
+            <BrandCharacters focus="guide" className="sidebar-character" />
             <span>
               <Sparkles size={19} />
               투입ON AI
@@ -3780,7 +3781,7 @@ export default function App() {
         <aside className="ai-panel">
           <header>
             <span className="ai-panel-mark">
-              <Sparkles size={21} />
+              <BrandCharacters focus="guide" />
             </span>
             <div>
               <h2>투입ON AI</h2>
@@ -3807,12 +3808,12 @@ export default function App() {
           <div className="chat-scroll">
             {!chat.length ? (
               <div className="ai-welcome">
-                <span>
-                  <Sparkles size={29} />
-                </span>
-                <h3>어떤 준비를 도와드릴까요?</h3>
+                <div className="ai-welcome-characters">
+                  <BrandCharacters />
+                </div>
+                <h3>함께라면, 준비가 쉬워져요.</h3>
                 <p>
-                  현황을 살펴보고, 막히는 작업을
+                  현황을 살펴보고 궁금한 내용을
                   <br />
                   하나씩 함께 풀어보세요.
                 </p>

@@ -9,7 +9,8 @@
     "preview": "vite preview --host 0.0.0.0 --port 5173",
     "test": "node --test tests/workflow.test.js",
     "test:browser": "playwright test",
-    "format": "prettier --write src tests *.js *.json index.html README.md"
+    "format": "prettier --write src tests *.js *.json index.html README.md",
+    "preview:static": "node scripts/serve-preview.mjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

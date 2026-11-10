@@ -614,3 +614,38 @@ test("release and offboarding stay staged until the seat Save action", async ({
     page.locator("tbody tr").filter({ hasText: "SFA-1" }),
   ).toContainText("철수 완료");
 });
+
+test("white Woori palette and local characters render without overlapping mobile progress", async ({
+  page,
+}) => {
+  await expect(page.locator("body")).toHaveCSS(
+    "background-color",
+    "rgb(255, 255, 255)",
+  );
+  await expect(page.locator(".dashboard-welcome")).toContainText(
+    "한눈에 보는 투입 현황",
+  );
+  await expect(page.locator(".dashboard-welcome > .btn")).toHaveCSS(
+    "background-color",
+    "rgb(0, 103, 172)",
+  );
+  const cast = page.locator(".welcome-visual img");
+  await expect(cast).toBeVisible();
+  expect(
+    await cast.evaluate((image) => image.complete && image.naturalWidth > 0),
+  ).toBeTruthy();
+  await page
+    .locator(".mode-switch")
+    .getByRole("button", { name: "수행사", exact: true })
+    .click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const progress = await page.locator(".hero-progress").boundingBox(),
+    characters = await page.locator(".member-cast").boundingBox();
+  expect(characters.y).toBeGreaterThanOrEqual(progress.y + progress.height);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBeTruthy();
+});

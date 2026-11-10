@@ -1,8 +1,14 @@
 # Design and font acknowledgements
 
-## Design references
+## Current visual reference
 
-The current monochrome surfaces, editorial display typography, pill actions and flat component geometry are adapted from [VoltAgent/awesome-design-md — Nike DESIGN.md](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/nike/DESIGN.md), inspected at commit `fcc7028`. Earlier component coverage was adapted from the same repository's [Composio DESIGN.md](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/composio/DESIGN.md). These are design adaptations for 투입ON and imply no endorsement or affiliation. Proprietary Nike/Futura/Helvetica Now/abcDiatype fonts and brand logos are not included. Inter, Anton and Korean system fonts are used instead.
+The current white-background design follows reference images supplied by the user: the Woori Financial Group palette, numeral-one diagonal motif, group mascot lineup and typography description. Colors are read from the supplied palette labels. The website could not be fetched in this environment; the supplied images, rather than an unverified site capture, are the visual source.
+
+`public/brand/woori-mascots.png` and `public/brand/woori-guide.png` are prototype illustration assets prepared with an image generation/editing tool from the user-provided character reference. They are not represented as official source artwork, brand certification, or affiliation with Woori Financial Group. The brand and characters remain associated with their respective owners. The described proprietary Korean typeface is not bundled because its actual font files were not supplied.
+
+## Earlier design references
+
+Earlier component coverage was adapted from [VoltAgent/awesome-design-md — Nike DESIGN.md](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/nike/DESIGN.md) and [Composio DESIGN.md](https://github.com/VoltAgent/awesome-design-md/blob/main/design-md/composio/DESIGN.md), inspected at commit `fcc7028`. The corresponding notice is retained below. No Nike logos or proprietary Nike/Futura/Helvetica Now/abcDiatype fonts are included.
 
 MIT License
 
@@ -29,7 +35,3 @@ SOFTWARE.
 ## Inter
 
 Inter Variable is redistributed from [rsms/inter](https://github.com/rsms/inter) under the SIL Open Font License. Its complete license is in [public/fonts/Inter-LICENSE.txt](public/fonts/Inter-LICENSE.txt). The font is served locally; the prototype does not fetch third-party font services.
-
-## Anton
-
-Anton is redistributed from the [Google Fonts repository](https://github.com/google/fonts/tree/main/ofl/anton) under the SIL Open Font License. Its complete license is in [public/fonts/Anton-OFL.txt](public/fonts/Anton-OFL.txt). All fonts are served locally.
