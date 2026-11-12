@@ -10,7 +10,8 @@
     "test": "node --test tests/workflow.test.js",
     "test:browser": "playwright test",
     "format": "prettier --write src tests *.js *.json index.html README.md",
-    "preview:static": "node scripts/serve-preview.mjs"
+    "preview:static": "node scripts/serve-preview.mjs",
+    "export:html": "node scripts/export-html.mjs"
   },
   "dependencies": {
     "exceljs": "^4.4.0",

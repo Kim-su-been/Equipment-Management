@@ -1,0 +1,2 @@
+# Standalone preview bundles source and third-party assets; review its source files.
+preview/*.html -diff linguist-generated=true

@@ -146,37 +146,64 @@ export const STATUS = {
   fix: ["보완 요청", "red"],
   error: ["수동 확인 필요", "red"],
 };
-export function taskStatus(person, id, seats = {}) {
+export function tasksForPerson(person, customTasks = []) {
+  return [
+    ...TASKS,
+    ...customTasks.filter(
+      (task) =>
+        (task.project === "전체" || task.project === person.project) &&
+        (!task.personIds || task.personIds.includes(person.id)),
+    ),
+  ];
+}
+export function requiredTasks(person, customTasks = []) {
+  return tasksForPerson(person, customTasks).filter(
+    (t) => !["O01", "O12", "O16"].includes(t.id) && t.required !== false,
+  );
+}
+export function taskStatus(person, id, seats = {}, customTasks = []) {
+  const task = tasksForPerson(person, customTasks).find((t) => t.id === id);
+  if (!task) return "waiting";
+  const statusOf = (id) => taskStatus(person, id, seats, customTasks);
   if (id === "O14")
     return Object.values(seats).some((s) => s?.personId === person.id)
       ? "done"
       : "ready";
   if (id === "O12")
-    return ["O10", "O11"].every((d) => taskStatus(person, d, seats) === "done")
+    return ["O10", "O11"].every((d) => statusOf(d) === "done")
       ? "done"
       : ["O10", "O11"].some((d) =>
-            ["review", "error", "fix"].includes(taskStatus(person, d, seats)),
+            ["review", "error", "fix"].includes(statusOf(d)),
           )
         ? "review"
         : "waiting";
+  if (
+    id === "O16" &&
+    requiredTasks(person, customTasks).some(
+      (t) => t.custom && statusOf(t.id) !== "done",
+    )
+  )
+    return "waiting";
   if (person.tasks[id]) return person.tasks[id];
-  const task = TASKS.find((t) => t.id === id);
-  return task.deps.every((d) => taskStatus(person, d, seats) === "done")
-    ? "ready"
-    : "waiting";
+  return task.deps.every((d) => statusOf(d) === "done") ? "ready" : "waiting";
 }
-export function progress(person, seats) {
-  const actual = TASKS.filter((t) => !["O01", "O12", "O16"].includes(t.id));
+export function progress(person, seats, customTasks = []) {
+  const actual = requiredTasks(person, customTasks);
   return Math.round(
-    (actual.filter((t) => taskStatus(person, t.id, seats) === "done").length /
+    (actual.filter(
+      (t) => taskStatus(person, t.id, seats, customTasks) === "done",
+    ).length /
       actual.length) *
       100,
   );
 }
-export function isPrepared(person, seats) {
-  return TASKS.find((t) => t.id === "O16").deps.every(
-    (d) => taskStatus(person, d, seats) === "done",
-  );
+export function isPrepared(person, seats, customTasks = []) {
+  return [
+    ...TASKS.find((t) => t.id === "O16").deps,
+    ...requiredTasks(person, customTasks)
+      .filter((t) => t.custom)
+      .map((t) => t.id),
+  ].every((id) => taskStatus(person, id, seats, customTasks) === "done");
 }
 export function canManage(scope, person) {
   return scope === "PMO" || scope === person.project;
@@ -283,6 +310,7 @@ export function seed() {
   });
   return {
     people,
+    customTasks: [],
     seats: blank,
     versions,
     messages: [

@@ -65,9 +65,11 @@ import {
   SEAT_IDS,
   TODAY,
   seed,
-  taskStatus,
-  progress,
-  isPrepared,
+  taskStatus as baseTaskStatus,
+  progress as baseProgress,
+  isPrepared as baseIsPrepared,
+  tasksForPerson,
+  requiredTasks,
   canManage,
   evidenceStatus,
 } from "./data.js";
@@ -81,6 +83,9 @@ import {
   getSeatChanges,
   commitSeatDraft,
 } from "./seat-workspace.js";
+
+import { createProjectTask } from "./project-tasks.js";
+import AddTaskForm from "./AddTaskForm.jsx";
 
 import BrandCharacters from "./BrandCharacters.jsx";
 
@@ -287,6 +292,17 @@ export default function App() {
   const scoped = data.people.filter((p) =>
     admin ? scope === "PMO" || p.project === scope : p.id === member.id,
   );
+  const personTasks = (person) =>
+    tasksForPerson(person, data.customTasks || []);
+  const taskStatus = (person, id, seats = data.seats) =>
+    baseTaskStatus(person, id, seats, data.customTasks || []);
+  const progress = (person, seats = data.seats) =>
+    baseProgress(person, seats, data.customTasks || []);
+  const isPrepared = (person, seats = data.seats) =>
+    baseIsPrepared(person, seats, data.customTasks || []);
+  const taskLabel = (id) =>
+    [...TASKS, ...(data.customTasks || [])].find((t) => t.id === id)?.title ||
+    id;
   const notify = (text) => {
     setToast(text);
     clearTimeout(toastTimer.current);
@@ -355,7 +371,7 @@ export default function App() {
     });
   const canEdit = (p) => admin && canManage(scope, p);
   const countStatus = (p, statuses) =>
-    TASKS.filter(
+    personTasks(p).filter(
       (t) => statuses.includes(taskStatus(p, t.id, data.seats)) && !t.derived,
     ).length;
   const pending = scoped
@@ -388,7 +404,7 @@ export default function App() {
     setModal({ type: "person", id: p.id });
   }
   function updateTask(p, id, status = "done") {
-    const task = TASKS.find((t) => t.id === id);
+    const task = personTasks(p).find((t) => t.id === id);
     if (!task) return;
     if (
       (task.owner === "admin" && !canEdit(p)) ||
@@ -817,7 +833,7 @@ export default function App() {
     );
   }
   function TaskRows({ person, filter = "전체 작업" }) {
-    const list = TASKS.filter(
+    const list = personTasks(person).filter(
       (t) =>
         (filter === "전체 작업" ||
           (filter === "내가 할 작업"
@@ -851,9 +867,17 @@ export default function App() {
                 <strong>{t.title}</strong>
                 <span>
                   {t.group} <b>·</b> {t.owner === "admin" ? "주관사" : "수행사"}{" "}
-                  <b>·</b> 필수
+                  <b>·</b> {t.required === false ? "선택" : "필수"}
+                  {t.due && ` · 기한 ${fmt(t.due)}`}
                   {status === "waiting" &&
-                    ` · 대기: ${t.deps
+                    ` · 대기: ${[
+                      ...t.deps,
+                      ...(t.id === "O16"
+                        ? requiredTasks(person, data.customTasks)
+                            .filter((x) => x.custom)
+                            .map((x) => x.id)
+                        : []),
+                    ]
                       .filter(
                         (d) => taskStatus(person, d, data.seats) !== "done",
                       )
@@ -1303,9 +1327,20 @@ export default function App() {
           title={admin ? "준비 작업" : "나의 작업"}
           desc="누가, 무엇을, 언제 해야 하는지 연결된 흐름으로 확인하세요."
           actions={
-            <Btn icon={Sparkles} onClick={() => setAi(true)}>
-              AI 업무 도우미
-            </Btn>
+            <>
+              <Btn icon={Sparkles} onClick={() => setAi(true)}>
+                AI 업무 도우미
+              </Btn>
+              {admin && (
+                <Btn
+                  variant="primary"
+                  icon={Plus}
+                  onClick={() => setModal({ type: "addTask" })}
+                >
+                  작업 추가
+                </Btn>
+              )}
+            </>
           }
         />
         <div className="tabs">
@@ -1338,7 +1373,7 @@ export default function App() {
             (p) =>
               !search ||
               p.id.toLowerCase().includes(search.toLowerCase()) ||
-              TASKS.some((t) => t.title.includes(search)),
+              personTasks(p).some((t) => t.title.includes(search)),
           )
           .map((p) => (
             <section className="card task-person" key={p.id}>
@@ -2151,7 +2186,7 @@ export default function App() {
   }
   function MemberHome() {
     const pct = progress(member, data.seats),
-      next = TASKS.filter(
+      next = personTasks(member).filter(
         (t) =>
           t.owner === "member" &&
           ["ready", "fix"].includes(taskStatus(member, t.id, data.seats)),
@@ -2198,7 +2233,7 @@ export default function App() {
               <CheckCircle2 size={14} />
               {isPrepared(member, data.seats)
                 ? "모든 필수 준비가 충족되었습니다."
-                : `필수 준비 ${TASKS.filter((t) => !["O01", "O12", "O16"].includes(t.id) && taskStatus(member, t.id, data.seats) === "done").length}/13 완료`}
+                : `필수 준비 ${requiredTasks(member, data.customTasks).filter((t) => taskStatus(member, t.id) === "done").length}/${requiredTasks(member, data.customTasks).length} 완료`}
             </div>
           </div>
           <div className="hero-illustration member-cast">
@@ -2771,8 +2806,61 @@ export default function App() {
   function renderModal() {
     if (!modal) return null;
     const p = data.people.find((p) => p.id === modal.id),
-      task = TASKS.find((t) => t.id === modal.task);
+      task = [...TASKS, ...(data.customTasks || [])].find(
+        (t) => t.id === modal.task,
+      );
     const close = () => setModal(null);
+    if (modal.type === "addTask" && admin)
+      return (
+        <Modal
+          title="작업 추가"
+          className="add-task-modal"
+          subtitle="프로젝트 공통 작업이나 특정 인원에게 필요한 작업을 등록하세요."
+          onClose={close}
+        >
+          <AddTaskForm
+            scope={scope}
+            people={scoped}
+            onClose={close}
+            onSubmit={(form) => {
+              try {
+                const task = createProjectTask(data, scope, form);
+                mutate((d) => {
+                  d.customTasks = [...(d.customTasks || []), task];
+                  const recipients = d.people.filter((person) =>
+                    tasksForPerson(person, [task]).some(
+                      (t) => t.id === task.id,
+                    ),
+                  );
+                  recipients.forEach((person) => {
+                    person.history.unshift({
+                      text: `${task.title} 작업 추가 · ${scope} 담당`,
+                      date: new Date().toLocaleString("ko-KR"),
+                    });
+                    addNotice(
+                      d,
+                      person,
+                      "새 준비 작업이 등록되었습니다",
+                      task.title,
+                    );
+                  });
+                  audit(
+                    d,
+                    `${task.title} 작업 추가`,
+                    `${task.project} · ${recipients.length}명 · ${task.required ? "필수" : "선택"}`,
+                  );
+                });
+                close();
+                notify(
+                  "작업을 추가했습니다. 대상 인원의 준비 작업에 반영되었습니다.",
+                );
+              } catch (error) {
+                notify(error.message);
+              }
+            }}
+          />
+        </Modal>
+      );
     if (modal.type === "person" && p)
       return (
         <Modal
@@ -2922,6 +3010,9 @@ export default function App() {
               <ClipboardList size={28} />
             </div>
             <p className="lead">{task.desc}</p>
+            {task.due && (
+              <p className="task-deadline">처리 기한: {fmt(task.due)}</p>
+            )}
             <div className="detail-grid">
               <div>
                 <span>담당 인원</span>
@@ -2935,7 +3026,9 @@ export default function App() {
             <div className="notice">
               <CheckCircle2 size={18} />
               실제 처리가 완료되었는지 확인한 후 아래 버튼을 눌러 주세요.
-              시연에서 외부 계정이나 출입 권한을 실제 발급하지는 않습니다.
+              {task.custom
+                ? " 안내된 완료 기준을 충족했는지 확인해 주세요."
+                : " 시연에서 외부 계정이나 출입 권한을 실제 발급하지는 않습니다."}
             </div>
           </div>
           <footer>
@@ -3112,6 +3205,7 @@ export default function App() {
       return (
         <InquiryForm
           person={p || member}
+          tasks={personTasks(p || member)}
           defaultTask={modal.task}
           change={modal.type === "change"}
           onClose={close}
@@ -3149,6 +3243,7 @@ export default function App() {
       return (
         <MessageDialog
           message={m}
+          taskTitle={taskLabel(m.task)}
           admin={admin}
           onClose={close}
           onReply={(reply) => {
@@ -4745,7 +4840,14 @@ function RegisterForm({ scope, people, onClose, onTemplate, onSave }) {
     </Modal>
   );
 }
-function InquiryForm({ person, defaultTask, change, onClose, onSubmit }) {
+function InquiryForm({
+  person,
+  tasks = TASKS,
+  defaultTask,
+  change,
+  onClose,
+  onSubmit,
+}) {
   const [form, setForm] = useState({
     task: defaultTask || "O01",
     title: "",
@@ -4775,7 +4877,7 @@ function InquiryForm({ person, defaultTask, change, onClose, onSubmit }) {
               value={form.task}
               onChange={(e) => setForm({ ...form, task: e.target.value })}
             >
-              {TASKS.map((t) => (
+              {tasks.map((t) => (
                 <option value={t.id} key={t.id}>
                   {t.title}
                 </option>
@@ -4819,12 +4921,12 @@ function InquiryForm({ person, defaultTask, change, onClose, onSubmit }) {
     </Modal>
   );
 }
-function MessageDialog({ message, admin, onClose, onReply }) {
+function MessageDialog({ message, taskTitle, admin, onClose, onReply }) {
   const [reply, setReply] = useState(message.reply || "");
   return (
     <Modal
       title={message.title}
-      subtitle={`${message.personId} · ${message.project} · ${taskLabel(message.task)}`}
+      subtitle={`${message.personId} · ${message.project} · ${taskTitle || taskLabel(message.task)}`}
       onClose={onClose}
     >
       <div className="modal-body">

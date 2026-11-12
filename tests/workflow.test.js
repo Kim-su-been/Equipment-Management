@@ -175,3 +175,106 @@ test("offboarding and seat release are committed together only on explicit save"
   assert.equal(next.seats["A-01"], null);
   assert.equal(next.versions.length, 5);
 });
+
+import { createProjectTask } from "../src/project-tasks.js";
+import { tasksForPerson } from "../src/data.js";
+const customForm = {
+  title: "개발 환경 접속 확인",
+  desc: "접속 결과를 확인해 주세요.",
+  project: "SFA",
+  owner: "member",
+  target: "all",
+  required: true,
+  dependency: "O06",
+  due: "2026-11-20",
+};
+test("project task permissions reject forged project and out-of-scope recipients", () => {
+  const d = seed();
+  assert.throws(() =>
+    createProjectTask(d, "SFA", { ...customForm, project: "전체" }),
+  );
+  assert.throws(() =>
+    createProjectTask(d, "SFA", { ...customForm, project: "그룹웨어" }),
+  );
+  assert.throws(() =>
+    createProjectTask(d, "SFA", {
+      ...customForm,
+      target: "selected",
+      personIds: ["GW-1"],
+    }),
+  );
+  assert.throws(() =>
+    createProjectTask(d, "PMO", {
+      ...customForm,
+      target: "selected",
+      personIds: [],
+    }),
+  );
+  assert.throws(() =>
+    createProjectTask(d, "PMO", { ...customForm, dependency: "O16" }),
+  );
+  assert.throws(() =>
+    createProjectTask(d, "PMO", { ...customForm, due: "2026-02-30" }),
+  );
+});
+test("project tasks follow dependencies, readiness and future project membership", () => {
+  const d = seed(),
+    person = d.people.find((p) => p.id === "SFA-1");
+  const task = createProjectTask(d, "SFA", customForm),
+    tasks = [task];
+  assert.equal(taskStatus(person, task.id, d.seats, tasks), "ready");
+  assert.equal(isPrepared(person, d.seats, tasks), false);
+  assert.equal(taskStatus(person, "O16", d.seats, tasks), "waiting");
+  assert.equal(progress(person, d.seats, tasks), 93);
+  assert.equal(
+    taskStatus(
+      d.people.find((p) => p.id === "SFA-5"),
+      task.id,
+      d.seats,
+      tasks,
+    ),
+    "waiting",
+  );
+  assert.equal(
+    tasksForPerson({ id: "GW-6", project: "그룹웨어" }, tasks).some(
+      (t) => t.id === task.id,
+    ),
+    false,
+  );
+  assert.equal(
+    tasksForPerson({ id: "SFA-6", project: "SFA" }, tasks).some(
+      (t) => t.id === task.id,
+    ),
+    true,
+  );
+  person.tasks[task.id] = "done";
+  assert.equal(isPrepared(person, d.seats, tasks), true);
+  assert.equal(progress(person, d.seats, tasks), 100);
+});
+test("PMO can assign optional global and individual tasks without changing readiness", () => {
+  const d = seed(),
+    person = d.people[0];
+  const task = createProjectTask(d, "PMO", {
+    ...customForm,
+    project: "전체",
+    required: false,
+  });
+  assert.ok(
+    d.people.every((p) =>
+      tasksForPerson(p, [task]).some((t) => t.id === task.id),
+    ),
+  );
+  assert.equal(isPrepared(person, d.seats, [task]), true);
+  assert.equal(progress(person, d.seats, [task]), 100);
+  const individual = createProjectTask(d, "PMO", {
+    ...customForm,
+    target: "selected",
+    personIds: [person.id],
+  });
+  assert.equal(tasksForPerson(person, [individual]).length, 17);
+  assert.equal(tasksForPerson(d.people[1], [individual]).length, 16);
+  assert.equal(
+    tasksForPerson({ id: "SFA-6", project: "SFA" }, [individual]).length,
+    16,
+  );
+});

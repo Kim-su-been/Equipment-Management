@@ -649,3 +649,173 @@ test("white Woori palette and local characters render without overlapping mobile
     ),
   ).toBeTruthy();
 });
+
+test("project manager adds a scoped task that the selected member completes and persists", async ({
+  page,
+}) => {
+  await page.getByLabel("주관사 역할 선택").selectOption("SFA");
+  await page
+    .locator(".sidebar")
+    .getByRole("button", { name: "준비 작업", exact: true })
+    .click();
+  await page.getByRole("button", { name: "작업 추가", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByLabel("적용 프로젝트")).toBeDisabled();
+  await expect(dialog.getByLabel("적용 프로젝트").locator("option")).toHaveText(
+    ["SFA"],
+  );
+  await dialog.getByLabel("작업명 *", { exact: true }).fill("개발 환경 확인");
+  await dialog
+    .getByLabel("작업 안내 *", { exact: true })
+    .fill("개발 환경에 접속하고 결과를 확인해 주세요.");
+  await dialog.getByLabel("처리 기한 (선택)").fill("2026-11-20");
+  await dialog
+    .getByLabel("대상 인원", { exact: true })
+    .selectOption("selected");
+  await expect(
+    dialog.getByRole("button", { name: "작업 추가하기" }),
+  ).toBeDisabled();
+  await dialog.getByLabel("SFA-3 선택", { exact: true }).check();
+  await dialog.getByRole("button", { name: "작업 추가하기" }).click();
+  await expect(
+    page
+      .locator(".task-row")
+      .filter({ has: page.getByText("개발 환경 확인", { exact: true }) }),
+  ).toHaveCount(1);
+  await page
+    .locator(".mode-switch")
+    .getByRole("button", { name: "수행사", exact: true })
+    .click();
+  await page.getByLabel("수행사 인원 선택").selectOption("SFA-3");
+  await page
+    .locator(".sidebar")
+    .getByRole("button", { name: "나의 작업", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "작업 추가", exact: true }),
+  ).toHaveCount(0);
+  const row = page
+    .locator(".task-row")
+    .filter({ has: page.getByText("개발 환경 확인", { exact: true }) });
+  await expect(row).toContainText("2026.11.20");
+  await row.getByRole("button", { name: "작업 시작", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "완료 확인", exact: true })
+    .click();
+  await expect(row.locator(".badge")).toHaveText("완료");
+  await page.reload();
+  await page
+    .locator(".sidebar")
+    .getByRole("button", { name: "준비 작업", exact: true })
+    .click();
+  await expect(
+    page
+      .locator(".task-row")
+      .filter({ has: page.getByText("개발 환경 확인", { exact: true }) })
+      .locator(".badge"),
+  ).toHaveText("완료");
+  await page.getByLabel("주관사 역할 선택").selectOption("그룹웨어");
+  await expect(
+    page
+      .locator(".task-row")
+      .filter({ has: page.getByText("개발 환경 확인", { exact: true }) }),
+  ).toHaveCount(0);
+});
+
+test("PMO adds global and project tasks, admin ownership and required readiness are connected", async ({
+  page,
+}) => {
+  await page
+    .locator(".sidebar")
+    .getByRole("button", { name: "준비 작업", exact: true })
+    .click();
+  for (const [title, project] of [
+    ["공통 업무 안내", "전체"],
+    ["GW 개발 권한 확인", "그룹웨어"],
+  ]) {
+    await page.getByRole("button", { name: "작업 추가", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByLabel("작업명 *", { exact: true }).fill(title);
+    await dialog
+      .getByLabel("작업 안내 *", { exact: true })
+      .fill("담당자가 처리 결과를 확인합니다.");
+    await dialog.getByLabel("적용 프로젝트").selectOption(project);
+    await dialog.getByLabel("수행 주체").selectOption("admin");
+    await dialog.getByRole("button", { name: "작업 추가하기" }).click();
+  }
+  await expect(
+    page
+      .locator(".task-row")
+      .filter({ has: page.getByText("공통 업무 안내", { exact: true }) }),
+  ).toHaveCount(10);
+  await expect(
+    page
+      .locator(".task-row")
+      .filter({ has: page.getByText("GW 개발 권한 확인", { exact: true }) }),
+  ).toHaveCount(5);
+  const person = page.locator(".task-person").filter({
+    has: page.getByRole("heading", { name: "SFA-1 SFA", exact: true }),
+  });
+  await expect(person.locator(".progress-cell")).toContainText("93");
+  await expect(
+    person.locator(".task-row").filter({ hasText: "최종 투입 준비 확인" }),
+  ).toContainText("공통 업무 안내");
+  await person
+    .locator(".task-row")
+    .filter({ has: page.getByText("공통 업무 안내", { exact: true }) })
+    .getByRole("button", { name: "작업 시작", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "완료 확인", exact: true })
+    .click();
+  await expect(person.locator(".progress-cell")).toContainText("100");
+});
+
+test("readability and panel contrast retain white canvas at desktop and mobile sizes", async ({
+  page,
+}) => {
+  await expect(page.locator(".task-person")).toHaveCount(0);
+  expect(
+    await page
+      .locator(".nav-item")
+      .first()
+      .evaluate((el) => parseFloat(getComputedStyle(el).fontSize)),
+  ).toBeGreaterThanOrEqual(14);
+  await expect(page.locator(".stat-card").first()).toHaveCSS(
+    "background-color",
+    "rgb(237, 246, 253)",
+  );
+  await expect(page.locator(".needs-card")).toHaveCSS(
+    "background-color",
+    "rgb(255, 250, 241)",
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByLabel("메뉴 열기").click();
+  await page
+    .locator(".sidebar")
+    .getByRole("button", { name: "준비 작업", exact: true })
+    .click();
+  await page.getByRole("button", { name: "작업 추가", exact: true }).click();
+  await expect(
+    page.getByRole("dialog").getByLabel("작업명 *", { exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBeTruthy();
+  expect(
+    await page
+      .getByRole("dialog")
+      .evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+  ).toBeTruthy();
+  const bounds = await page.getByRole("dialog").boundingBox();
+  const submit = await page
+    .getByRole("button", { name: "작업 추가하기" })
+    .boundingBox();
+  expect(submit.y + submit.height).toBeLessThanOrEqual(
+    bounds.y + bounds.height,
+  );
+});
