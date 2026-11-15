@@ -89,6 +89,7 @@ import AddTaskForm from "./AddTaskForm.jsx";
 
 import SelfRegistration from "./SelfRegistration.jsx";
 import OnlineDocument from "./OnlineDocument.jsx";
+import { loadDocumentBackground } from "./document-templates.js";
 import TaskExportForm from "./TaskExportForm.jsx";
 import EvidenceManager from "./EvidenceManager.jsx";
 import ContactRoutes from "./ContactRoutes.jsx";
@@ -538,7 +539,14 @@ export default function App() {
       throw new Error(
         "이미 확인 중인 서류입니다. 담당자 결과를 확인해 주세요.",
       );
-    const submission = createSubmission(latestPerson, task.id, values, proof);
+    const background = await loadDocumentBackground(task.id);
+    const submission = createSubmission(
+      latestPerson,
+      task.id,
+      values,
+      proof,
+      background,
+    );
     const filename = `${p.id}_${task.title}_v${submission.version}.html`;
     const stored = await storeEvidence(
       new Blob([submission.html], { type: "text/html;charset=utf-8" }),
@@ -745,7 +753,7 @@ export default function App() {
     });
     download(
       blob,
-      `투입ON_${kind === "template" ? "인원등록_템플릿" : "인원현황"}.xlsx`,
+      `레디보드_${kind === "template" ? "인원등록_템플릿" : "인원현황"}.xlsx`,
     );
     notify("엑셀 파일을 다운로드했습니다.");
   }
@@ -762,7 +770,7 @@ export default function App() {
       (p) =>
         (projectFilter === "전체 프로젝트" || p.project === projectFilter) &&
         (!search ||
-          [p.id, p.company, p.email, p.role]
+          [p.id, p.name, p.company, p.email, p.role]
             .join(" ")
             .toLowerCase()
             .includes(search.toLowerCase())) &&
@@ -882,7 +890,7 @@ export default function App() {
                         <span className="person-identifier">{p.id}</span>
                       )}
                       <span>
-                        {p.company} · {p.role}
+                        {[p.company, p.role].filter(Boolean).join(" · ")}
                       </span>
                     </div>
                   </div>
@@ -1114,7 +1122,7 @@ export default function App() {
               한눈에 보는 투입 현황
               <span className="heading-dot" />
             </h1>
-            <p>새로운 시작의 모든 준비를, 투입ON과 차근차근 연결해 보세요.</p>
+            <p>새로운 시작의 모든 준비를, 레디보드과 차근차근 연결해 보세요.</p>
           </div>
           <div className="welcome-visual">
             <BrandCharacters label="함께 프로젝트의 시작을 준비하는 캐릭터들" />
@@ -2338,75 +2346,128 @@ export default function App() {
     );
   }
   function MemberProfile() {
+    const educationDone = ["O08", "O09"].filter(
+      (id) => taskStatus(member, id) === "done",
+    ).length;
+    const documentsDone = ["O10", "O11"].filter(
+      (id) => taskStatus(member, id) === "done",
+    ).length;
     return (
       <>
         <PageHeading
           title="내 정보"
-          desc="본인 등록 정보와 자동 배정된 준비 항목을 확인하세요."
-          actions={
-            <Btn
-              icon={UserRound}
-              onClick={() => setModal({ type: "selfRegister" })}
-            >
-              새 수행사 본인 등록
-            </Btn>
-          }
+          desc="프로젝트 참여 정보와 투입 준비 상태를 확인하세요."
         />
-        <section className="card member-profile">
-          <div className="card-heading">
-            <h2>
-              {member.name || member.id} · {member.id}
-            </h2>
-            <Badge tone="blue">
-              {member.selfRegistered ? "본인 등록" : "관리자 등록 · 예시"}
+        <section className="card member-profile profile-overview">
+          <div className="profile-identity">
+            <span className="profile-portrait">
+              {(member.name || member.id).slice(0, 1)}
+            </span>
+            <div className="profile-identity-copy">
+              <span className="eyebrow">MY PROFILE</span>
+              <h2>
+                {member.name || member.id} <span>({member.project})</span>
+              </h2>
+              <p>{member.company}</p>
+            </div>
+            <Badge tone={member.lifecycle === "투입 중" ? "green" : "blue"}>
+              {member.lifecycle}
             </Badge>
           </div>
-          <div className="modal-body detail-grid">
-            {[
-              ["성명", member.name || member.id],
-              ["소속", member.company],
-              ["프로젝트", member.project],
-              ["연락처", member.phone || "미입력"],
-              ["이메일", member.email],
-              ["역할", member.role],
-              ["투입 예정 시작일", member.start],
-              ["투입 예정 종료일", member.end],
-            ].map(([k, v]) => (
-              <div key={k}>
-                <span>{k}</span>
-                <strong>{v}</strong>
-              </div>
-            ))}
+          <div className="profile-detail-section">
+            <h3>참여 정보</h3>
+            <div className="profile-details">
+              {[
+                ["성명", member.name || member.id],
+                ["소속 수행사", member.company],
+                ["소속 프로젝트", member.project],
+                ["연락처", member.phone || "미등록"],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <span>{label}</span>
+                  <strong>{value}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="profile-period">
+            <CalendarDays size={21} />
+            <div>
+              <span>투입 예정 기간</span>
+              <strong>
+                <time>{fmt(member.start)}</time>
+                <span>—</span>
+                <time>{fmt(member.end)}</time>
+              </strong>
+            </div>
+            <span className="subtle-tag">예정 일정</span>
           </div>
         </section>
-        <section className="card assigned-work">
+        <section className="profile-readiness card">
           <div className="card-heading">
-            <h2>등록과 함께 배정된 준비</h2>
+            <div>
+              <h2>나의 준비 현황</h2>
+              <p>필요한 준비부터 바로 이어서 진행하세요.</p>
+            </div>
+            <Progress value={progress(member)} />
           </div>
           <div className="profile-assignment-grid">
             {[
-              ["education", "필수 교육", "외부 교육 2개 · 수료증 등록"],
-              ["documents", "온라인 서류", "보안서약서·개인정보 동의서"],
-              ["tasks", "주관사 준비 현황", "계정·출입·좌석 등 연결 작업"],
-            ].map(([id, title, desc]) => (
-              <button className="btn" key={id} onClick={() => go(id)}>
-                <strong>{title}</strong>
-                <span>{desc}</span>
-                <ArrowRight size={17} />
+              [
+                "education",
+                "필수 교육",
+                `${educationDone} / 2 완료`,
+                "외부 수강 후 수료증 등록",
+                GraduationCap,
+              ],
+              [
+                "documents",
+                "제출 서류",
+                `${documentsDone} / 2 승인`,
+                "원본 서약서와 작성 가이드",
+                FileText,
+              ],
+              [
+                "tasks",
+                "준비 작업",
+                `${progress(member)}% 준비`,
+                "계정·출입·좌석 준비 확인",
+                ClipboardList,
+              ],
+            ].map(([id, title, count, desc, Icon]) => (
+              <button
+                className="profile-shortcut"
+                key={id}
+                onClick={() => go(id)}
+              >
+                <span className="profile-shortcut-icon">
+                  <Icon size={20} />
+                </span>
+                <span>
+                  <strong>{title}</strong>
+                  <b>{count}</b>
+                  <small>{desc}</small>
+                </span>
+                <ChevronRight size={18} />
               </button>
             ))}
           </div>
         </section>
-        <p className="info-note">
-          정보 정정은 담당자에게 요청할 수 있습니다. 예정 기간과 실제 투입·철수
-          실적은 구분하여 관리해야 합니다.
-        </p>
-        <Btn
-          icon={MessageSquare}
-          onClick={() => setModal({ type: "change", id: member.id })}
-        >
-          등록 정보 정정 요청
-        </Btn>
+        <div className="profile-support">
+          <div>
+            <ShieldCheck size={20} />
+            <span>
+              <strong>등록 정보가 변경되었나요?</strong>
+              <small>담당자에게 정정 요청을 남겨 주세요.</small>
+            </span>
+          </div>
+          <Btn
+            icon={MessageSquare}
+            onClick={() => setModal({ type: "change", id: member.id })}
+          >
+            정보 정정 요청
+          </Btn>
+        </div>
       </>
     );
   }
@@ -2426,7 +2487,7 @@ export default function App() {
               {member.name || member.id}님, 반가워요
               <span className="heading-dot" />
             </h1>
-            <p>새로운 프로젝트의 시작, 투입ON이 함께 준비할게요.</p>
+            <p>새로운 프로젝트의 시작, 레디보드이 함께 준비할게요.</p>
           </div>
           <span className="subtle-tag">{member.project} 프로젝트</span>
         </div>
@@ -3125,7 +3186,8 @@ export default function App() {
                 </Badge>
               </h3>
               <p>
-                {p.role} · {p.email}
+                {[p.role, p.email].filter(Boolean).join(" · ") ||
+                  "수행사 등록 인원"}
               </p>
             </div>
             <div className="summary-progress">
@@ -3159,8 +3221,8 @@ export default function App() {
                     ["연락처", p.phone || "미입력"],
                     ["프로젝트", p.project],
                     ["소속 수행사", p.company],
-                    ["업무 역할", p.role],
-                    ["업무용 이메일", p.email],
+                    ["업무 역할", p.role || "미등록"],
+                    ["업무용 이메일", p.email || "미등록"],
                     ["투입 시작일", fmt(p.start)],
                     ["투입 종료일", fmt(p.end)],
                     [
@@ -3216,7 +3278,7 @@ export default function App() {
           </div>
         </Modal>
       );
-    if (modal.type === "selfRegister")
+    if (modal.type === "selfRegister" && !admin)
       return (
         <SelfRegistration
           Modal={Modal}
@@ -3797,7 +3859,7 @@ export default function App() {
             <ol className="guide-list">
               <li>담당자가 제공하는 교육 사이트에서 수강합니다.</li>
               <li>교육을 마치면 수료증을 발급받습니다.</li>
-              <li>투입ON의 교육 화면에서 수료증을 등록합니다.</li>
+              <li>레디보드의 교육 화면에서 수료증을 등록합니다.</li>
             </ol>
             <div className="notice">
               <AlertCircle size={17} />이 화면은 시연용 안내입니다. 실제
@@ -3849,13 +3911,13 @@ export default function App() {
     if (modal.type === "help")
       return (
         <Modal
-          title="투입ON 프로토타입 안내"
+          title="레디보드 프로토타입 안내"
           subtitle="프로젝트의 시작을 연결하는 인력 투입관리 워크스페이스"
           onClose={close}
         >
           <div className="modal-body help-body">
             <div className="help-brand">
-              on<span>투입ON</span>
+              R<span>레디보드</span>
             </div>
             <h3>이렇게 시연해 보세요</h3>
             <ol className="guide-list">
@@ -3894,15 +3956,13 @@ export default function App() {
         <button
           className="brand"
           onClick={() => go("dashboard")}
-          aria-label="투입ON 홈"
+          aria-label="레디보드 홈"
         >
           <span className="brand-mark">
-            on
-            <span />
+            R<span />
           </span>
-          <span>
-            투입<span>ON</span>
-            <small>PROJECT PEOPLE, CONNECTED.</small>
+          <span className="brand-wordmark">
+            레디보드<small>READYBOARD · PROJECT PEOPLE</small>
           </span>
         </button>
         <div className="workspace-label">
@@ -3960,7 +4020,7 @@ export default function App() {
             <BrandCharacters focus="guide" className="sidebar-character" />
             <span>
               <Sparkles size={19} />
-              투입ON AI
+              레디보드 AI
             </span>
             <p>
               준비부터 다음 조치까지,
@@ -4096,13 +4156,15 @@ export default function App() {
           </div>
         </header>
         <div className="prototype-strip">
-          <button
-            className="self-register-entry"
-            onClick={() => setModal({ type: "selfRegister" })}
-          >
-            <UserRound size={14} />
-            수행사 본인 등록
-          </button>
+          {!admin && (
+            <button
+              className="self-register-entry"
+              onClick={() => setModal({ type: "selfRegister" })}
+            >
+              <UserRound size={14} />
+              수행사 본인 등록
+            </button>
+          )}
           <span>
             <span className="prototype-dot" />
             INTERACTIVE PROTOTYPE
@@ -4155,7 +4217,7 @@ export default function App() {
           )}
           <div className="page-footer">
             <span>
-              투입ON <i>·</i> 프로젝트의 시작을 연결하다
+              레디보드 <i>·</i> 프로젝트의 시작을 연결하다
             </span>
             <span>
               DEMO WORKSPACE <b>·</b> 2026
@@ -4245,7 +4307,7 @@ export default function App() {
               <BrandCharacters focus="guide" />
             </span>
             <div>
-              <h2>투입ON AI</h2>
+              <h2>레디보드 AI</h2>
               <p>현재 화면에 맞춘 업무 도우미</p>
             </div>
             <button

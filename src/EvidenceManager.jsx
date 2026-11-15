@@ -161,7 +161,7 @@ export default function EvidenceManager({
                 keys,
                 history,
               );
-              onDownload(blob, `투입ON_제출서류_${scope}.zip`);
+              onDownload(blob, `레디보드_제출서류_${scope}.zip`);
               onNotify(`${keys.length}개 원본과 제출현황을 다운로드했습니다.`);
             } catch (e) {
               onNotify(e.message);

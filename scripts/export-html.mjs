@@ -1,5 +1,13 @@
 import { build } from "vite";
-import { readFile, writeFile, mkdir, mkdtemp, rm } from "node:fs/promises";
+import {
+  readFile,
+  writeFile,
+  mkdir,
+  mkdtemp,
+  rm,
+  copyFile,
+  chmod,
+} from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import os from "node:os";
@@ -8,13 +16,14 @@ import { makeZip } from "../src/archive.js";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const output = path.resolve(
   root,
-  process.argv[2] || "preview/tuipon-preview.html",
+  process.argv[2] || "preview/readyboard-preview.html",
 );
 const temporary = await mkdtemp(path.join(os.tmpdir(), "tuipon-html-"));
 const mime = {
   ".png": "image/png",
   ".svg": "image/svg+xml",
   ".woff2": "font/woff2",
+  ".pdf": "application/pdf",
 };
 const asset = async (name) => {
   const bytes = await readFile(path.join(root, "public", name));
@@ -42,7 +51,14 @@ try {
     throw new Error("Expected one bundled script and stylesheet.");
   let js = await readFile(path.join(temporary, script[1]), "utf8");
   let css = await readFile(path.join(temporary, stylesheet[1]), "utf8");
-  for (const name of ["brand/woori-mascots.png", "brand/woori-guide.png"])
+  for (const name of [
+    "brand/woori-mascots.png",
+    "brand/woori-guide.png",
+    "forms/security-pledge.png",
+    "forms/security-pledge.pdf",
+    "forms/privacy-consent.png",
+    "forms/privacy-consent.pdf",
+  ])
     js = js.replaceAll(`/${name}`, await asset(name));
   css = css.replaceAll(
     "/fonts/InterVariable.woff2",
@@ -69,12 +85,13 @@ try {
   html += `\n<!--\nStandalone prototype export. Includes simulated AI and browser-local data.\n${notices}\n${license}\n-->\n`;
   await mkdir(path.dirname(output), { recursive: true });
   await writeFile(output, html);
+  await chmod(output, 0o644);
   console.log(`Standalone HTML: ${output} (${Buffer.byteLength(html)} bytes)`);
   const zipOutput = path.join(
     path.dirname(output),
     `${path.basename(output, path.extname(output))}.zip`,
   );
-  const instructions = `투입ON HTML 미리보기
+  const instructions = `레디보드 HTML 미리보기
 
 1. ZIP 파일의 압축을 풀어 주세요.
 2. ${path.basename(output)} 파일을 Chrome 또는 Edge에서 열어 주세요.
@@ -89,7 +106,17 @@ try {
     { name: "README.txt", bytes: new TextEncoder().encode(instructions) },
   ]);
   await writeFile(zipOutput, new Uint8Array(await archive.arrayBuffer()));
+  await chmod(zipOutput, 0o644);
   console.log(`Standalone ZIP: ${zipOutput} (${archive.size} bytes)`);
+  if (!process.argv[2]) {
+    // Preserve the previously shared download URLs while using the new brand name.
+    const legacyHtml = path.join(root, "preview/tuipon-preview.html");
+    const legacyZip = path.join(root, "preview/tuipon-preview.zip");
+    await copyFile(output, legacyHtml);
+    await chmod(legacyHtml, 0o644);
+    await copyFile(zipOutput, legacyZip);
+    await chmod(legacyZip, 0o644);
+  }
 } finally {
   await rm(temporary, { recursive: true, force: true });
 }

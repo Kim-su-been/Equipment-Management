@@ -1,35 +1,30 @@
 import { PROJECTS, TASKS, canManage } from "./data.js";
+import { getDocumentTemplate, fieldText } from "./document-templates.js";
+import { DOCUMENT_LAYOUTS } from "./document-template-layouts.js";
 export const DOCUMENT_IDS = ["O10", "O11"];
-export const DOCUMENT_VERSION = "2.0-demo";
+export const DOCUMENT_VERSION = "3.0-demo";
 export const DEMO_CODE = "135790";
 export function todayLocal() {
   const date = new Date();
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
-export const DOCUMENT_CLAUSES = {
-  O10: [
-    "업무 중 취득한 정보와 자료를 승인 없이 외부에 제공하지 않습니다.",
-    "자료 접근·보관·반납에 관한 프로젝트 보안 기준을 준수합니다.",
-  ],
-  O11: [
-    "수집 항목: 성명, 소속, 프로젝트, 업무용 연락처, 투입 기간",
-    "이용 목적: 프로젝트 인력 투입과 교육·서류·출입 준비 관리. 보유기간은 실제 운영 양식 확정 시 고지하며, 현재 문서는 시연용입니다.",
-  ],
-};
+export const DOCUMENT_CLAUSES = Object.fromEntries(
+  Object.entries(DOCUMENT_LAYOUTS).map(([id, template]) => [
+    id,
+    template.clauses,
+  ]),
+);
 export const cleanPhone = (value = "") => value.replace(/[^\d]/g, "");
 export function profileErrors(form, people = [], exceptId) {
   const errors = [];
   for (const [key, label] of [
     ["name", "이름"],
     ["company", "소속"],
-    ["role", "역할"],
   ])
     if (!form[key]?.trim() || form[key].length > 80)
       errors.push(`${label}을 80자 이내로 입력해 주세요.`);
   if (!PROJECTS.includes(form.project))
     errors.push("프로젝트를 선택해 주세요.");
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email || ""))
-    errors.push("업무용 이메일을 확인해 주세요.");
   if (!/^0\d{8,10}$/.test(cleanPhone(form.phone)))
     errors.push("연락처를 확인해 주세요.");
   const dateOk = (v) =>
@@ -42,10 +37,14 @@ export function profileErrors(form, people = [], exceptId) {
     people.some(
       (p) =>
         p.id !== exceptId &&
-        p.email?.trim().toLowerCase() === form.email?.trim().toLowerCase(),
+        p.project === form.project &&
+        cleanPhone(p.phone) &&
+        cleanPhone(p.phone) === cleanPhone(form.phone),
     )
   )
-    errors.push("이미 등록된 이메일입니다. 기존 인원 화면을 선택해 주세요.");
+    errors.push(
+      "이미 해당 프로젝트에 등록된 연락처입니다. 기존 인원 화면을 선택해 주세요.",
+    );
   return errors;
 }
 export function registerSelf(data, form) {
@@ -59,8 +58,8 @@ export function registerSelf(data, form) {
     name: form.name.trim(),
     company: form.company.trim(),
     project: form.project,
-    role: form.role.trim(),
-    email: form.email.trim().toLowerCase(),
+    role: "",
+    email: "",
     phone: cleanPhone(form.phone),
     start: form.start,
     end: form.end,
@@ -87,7 +86,7 @@ export function defaultDocument(person, id) {
     name: person.name || person.id,
     company: person.company,
     project: person.project,
-    email: person.email,
+    email: person.email || "",
     phone: person.phone || "",
     start: person.start,
     end: person.end,
@@ -190,10 +189,25 @@ const escape = (value) =>
         c
       ],
   );
-export function documentHtml(submission) {
+export function documentHtml(submission, backgroundImage = "") {
   const { values: v, taskId: id } = submission;
   const title = TASKS.find((t) => t.id === id)?.title || id;
-  return `<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)}</title><style>body{font:16px/1.8 sans-serif;color:#173b58;max-width:820px;margin:40px auto;padding:24px}h1{color:#0067ac}table{border-collapse:collapse;width:100%}th,td{border:1px solid #b9cedd;text-align:left;padding:10px}th{background:#eef6fc}aside{padding:16px;background:#fff3dc}footer{border-top:1px solid #bdcddd;margin-top:24px;font-size:13px;overflow-wrap:anywhere}@media print{body{margin:0}}</style><body><aside>시연 제출본 · 실제 본인인증/전자서명 서비스 미연동 · 운영용 법적 서식 아님</aside><h1>${escape(title)}</h1><p>양식 ${DOCUMENT_VERSION} · 제출 v${submission.version}</p><table>${[
+  const template = getDocumentTemplate(id);
+  const hasBackground = /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(
+    backgroundImage,
+  );
+  const original = hasBackground
+    ? `<div class="original-sheet" style="position:relative;width:100%;aspect-ratio:${template.width}/${template.height};container-type:inline-size"><img alt="${escape(template.title)} 원본" src="${backgroundImage}" style="width:100%;display:block"/>${Object.entries(
+        template.fields,
+      )
+        .map(
+          ([key, rect]) =>
+            `<span style="position:absolute;left:${rect.x}%;top:${rect.y}%;width:${rect.w}%;height:${rect.h}%;display:flex;align-items:center;justify-content:${["read", "acknowledged", "consentAgree", "consentDisagree"].includes(key) ? "center" : "flex-start"};font-size:1.65cqw;white-space:nowrap;overflow:hidden;color:#123f6d">${escape(fieldText(key, v, submission.submittedDate || submission.submittedAt.slice(0, 10)))}</span>`,
+        )
+        .join("")}</div>`
+    : "";
+
+  return `<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)}</title><style>body{font:16px/1.8 sans-serif;color:#173b58;max-width:820px;margin:40px auto;padding:24px}h1{color:#0067ac}table{border-collapse:collapse;width:100%}th,td{border:1px solid #b9cedd;text-align:left;padding:10px}th{background:#eef6fc}aside{padding:16px;background:#fff3dc}footer{border-top:1px solid #bdcddd;margin-top:24px;font-size:13px;overflow-wrap:anywhere}@media print{body{margin:0}}</style><body><aside>시연 제출본 · 실제 본인인증/전자서명 서비스 미연동 · 운영용 법적 서식 아님</aside>${original}<h1>${escape(title)}</h1><p>양식 ${DOCUMENT_VERSION} · 제출 v${submission.version}</p><table>${[
     ["성명", v.name],
     ["소속", v.company],
     ["프로젝트", v.project],
@@ -206,7 +220,13 @@ export function documentHtml(submission) {
       "",
     )}</table><h2>확인할 내용</h2>${DOCUMENT_CLAUSES[id].map((t) => `<p>${escape(t)}</p>`).join("")}${id === "O11" ? `<p>동의 여부: <strong>${v.consent === "agree" ? "동의함" : "동의하지 않음 · 담당자 확인 필요"}</strong></p>` : ""}<p>조항 읽기 및 내용 확인: 완료</p><p>본인 입력 서명: <strong>${escape(v.signature)}</strong></p><footer>제출자: ${escape(submission.personId)}<br>제출 시점: ${escape(submission.submittedAt)}<br>시연 본인확인 시점: ${escape(submission.proof.verifiedAt)}<br>시연 확인 식별자: ${escape(submission.proof.reference)}<br>문서 식별자: ${escape(submission.id)}</footer></body></html>`;
 }
-export function createSubmission(person, id, values, proof) {
+export function createSubmission(
+  person,
+  id,
+  values,
+  proof,
+  backgroundImage = "",
+) {
   const issues = validateSubmission(person, id, values, proof);
   if (issues.length) throw new Error(issues.map((i) => i.message).join("\n"));
   const previous = person.submissions?.[id] || [];
@@ -223,11 +243,18 @@ export function createSubmission(person, id, values, proof) {
         person.files?.[id]?.version || 0,
       ) + 1,
     templateVersion: DOCUMENT_VERSION,
+    sourceTemplate: {
+      id,
+      version: getDocumentTemplate(id).version,
+      digest: getDocumentTemplate(id).digest,
+      title: getDocumentTemplate(id).title,
+    },
     values: structuredClone(values),
     proof: structuredClone(proof),
     submittedAt: new Date().toISOString(),
+    submittedDate: todayLocal(),
   };
-  return { ...result, html: documentHtml(result) };
+  return { ...result, html: documentHtml(result, backgroundImage) };
 }
 export function authorizedPeople(data, scope, project, personIds) {
   if (

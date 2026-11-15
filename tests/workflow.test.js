@@ -327,9 +327,7 @@ test("self registration assigns identity, education, documents and host work wit
   assert.equal(taskStatus(person, "O02", d.seats), "ready");
   assert.equal(taskStatus(person, "O06", d.seats), "waiting");
   assert.equal(isPrepared(person, d.seats), false);
-  assert.throws(() =>
-    registerSelf(d, { ...registration, email: " NEW.MEMBER@DEMO.EXAMPLE " }),
-  );
+  assert.throws(() => registerSelf(d, { ...registration, name: "중복 인원" }));
   assert.throws(() =>
     registerSelf(d, {
       ...registration,
@@ -451,4 +449,57 @@ test("UTF-8 ZIP archive preserves original bytes and standard CRC", async () => 
     ),
     bytes,
   );
+});
+
+test("simplified self registration ignores email/role and deduplicates by project and phone", () => {
+  const data = seed(),
+    minimal = {
+      name: "김레디",
+      company: "예시 수행사",
+      project: "SFA",
+      phone: "010-3333-4444",
+      start: "2026-11-16",
+      end: "2027-02-26",
+    };
+  const person = registerSelf(data, minimal);
+  assert.equal(person.email, "");
+  assert.equal(person.role, "");
+  data.people.push(person);
+  assert.throws(
+    () => registerSelf(data, { ...minimal, name: "같은 인원" }),
+    /연락처/,
+  );
+  assert.equal(
+    registerSelf(data, { ...minimal, project: "그룹웨어" }).project,
+    "그룹웨어",
+  );
+});
+
+test("original PDF templates match their hashes and keep all field locations on one page", async () => {
+  const { getDocumentTemplate } = await import("../src/document-templates.js");
+  const { readFile } = await import("node:fs/promises");
+  const { createHash } = await import("node:crypto");
+  for (const id of ["O10", "O11"]) {
+    const template = getDocumentTemplate(id);
+    const pdf = await readFile(
+      new URL(`../public${template.pdfUrl}`, import.meta.url),
+    );
+    assert.equal(pdf.subarray(0, 5).toString(), "%PDF-");
+    assert.equal(
+      createHash("sha256").update(pdf).digest("hex"),
+      template.digest,
+    );
+    for (const rect of Object.values(template.fields)) {
+      assert.ok(
+        rect.x >= 0 &&
+          rect.y >= 0 &&
+          rect.w > 0 &&
+          rect.h > 0 &&
+          rect.x + rect.w <= 100 &&
+          rect.y + rect.h <= 100,
+      );
+    }
+    assert.ok(!("email" in template.fields));
+    assert.ok(template.fields.signature);
+  }
 });

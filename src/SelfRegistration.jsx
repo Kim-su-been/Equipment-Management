@@ -19,9 +19,7 @@ export default function SelfRegistration({
     name: "",
     company: "",
     project: "SFA",
-    role: "개발자",
     phone: "",
-    email: "",
     start: todayLocal(),
     end: "2027-02-26",
   });
@@ -44,7 +42,7 @@ export default function SelfRegistration({
         <div className="modal-body">
           <div className="onboarding-intro">
             <div>
-              <strong>프로젝트의 첫 시작, 투입ON과 함께</strong>
+              <strong>프로젝트의 첫 시작, 레디보드과 함께</strong>
               <p>본인 정보 입력 → 교육·서류 배정 → 주관사 준비 → 투입 확인</p>
             </div>
             <BrandCharacters focus="guide" />
@@ -54,8 +52,6 @@ export default function SelfRegistration({
               ["name", "이름", "text"],
               ["company", "소속 수행사", "text"],
               ["phone", "연락처", "tel"],
-              ["email", "업무용 이메일", "email"],
-              ["role", "업무 역할", "text"],
               ["start", "투입 예정 시작일", "date"],
               ["end", "투입 예정 종료일", "date"],
             ].map(([key, label, type]) => (
@@ -63,7 +59,7 @@ export default function SelfRegistration({
                 <span>{label} *</span>
                 <input
                   required
-                  maxLength={key === "email" ? 160 : 80}
+                  maxLength={80}
                   type={type}
                   value={form[key]}
                   autoComplete="off"

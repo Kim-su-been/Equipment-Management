@@ -20,6 +20,7 @@ import {
   validateSubmission,
 } from "./onboarding.js";
 import BrandCharacters from "./BrandCharacters.jsx";
+import OriginalDocument from "./OriginalDocument.jsx";
 
 const FIELD_LABELS = {
   phone: "연락처",
@@ -66,7 +67,8 @@ export default function OnlineDocument({
     [note, setNote] = useState(""),
     [saved, setSaved] = useState(false);
   const [editing, setEditing] = useState(!latest || status === "fix");
-  const sections = useRef({}),
+  const documentRef = useRef(null),
+    verificationRef = useRef(null),
     mounted = useRef(false);
   const formIssues = documentIssues(person, task.id, values);
   const issues = validateSubmission(person, task.id, values, proof);
@@ -78,13 +80,17 @@ export default function OnlineDocument({
         ? "signature"
         : "profile";
     setActive(section);
-    sections.current[section]?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
+    const control = (
+      field === "verification" ? verificationRef.current : documentRef.current
+    )?.querySelector(`[name="${field}"], [data-field="${field}"]`);
+    control?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+      block: "center",
+      inline: "center",
     });
-    sections.current[section]
-      ?.querySelector(`[name="${field}"]`)
-      ?.focus({ preventScroll: true });
+    control?.focus({ preventScroll: true });
   };
   const change = (key, value) => {
     setValues((v) => ({ ...v, [key]: value }));
@@ -126,7 +132,7 @@ export default function OnlineDocument({
   return (
     <Modal
       title={`${task.title} · 온라인 서류`}
-      subtitle={`${person.name || person.id} · ${person.project} · 양식 ${DOCUMENT_VERSION}`}
+      subtitle={`${person.name || person.id} · ${person.project} · 일반형 예시 원본`}
       onClose={onClose}
       wide
       className="online-document-modal"
@@ -162,200 +168,28 @@ export default function OnlineDocument({
             </div>
           )}
           <div className="notice compact">
-            시연용 양식과 본인확인입니다. 실제 인증·전자서명 서비스, 실제 AI
-            모델은 연결되지 않았습니다.
+            일반적인 프로젝트 서약서 형식의 예시 원본입니다. 실제 인증·전자서명
+            서비스, 실제 AI 모델은 연결되지 않았습니다.
           </div>
           {showForm ? (
-            <div className="online-paper">
-              <header>
-                <span>PROJECT ONBOARDING · ONLINE</span>
-                <h2>{task.title}</h2>
-                <p>
-                  필수 항목을 위에서부터 확인해 주세요. 입력 내용은 임시
-                  저장됩니다.
-                </p>
-              </header>
-              <section
-                className={active === "profile" ? "active" : ""}
-                ref={(el) => (sections.current.profile = el)}
-                onFocus={() => setActive("profile")}
-              >
-                <h3>
-                  <b>01</b> 등록 정보 확인
-                </h3>
-                <p className="section-help">
-                  등록 정보로 자동 입력했습니다. 정보 변경이 필요하면 내
-                  정보에서 확인해 주세요.
-                </p>
-                <div className="form-grid">
-                  {[
-                    ["name", "이름"],
-                    ["company", "소속"],
-                    ["project", "프로젝트"],
-                    ["email", "이메일"],
-                    ["start", "투입 시작일"],
-                    ["end", "투입 종료일"],
-                  ].map(([key, label]) => (
-                    <label className="field" key={key}>
-                      <span>{label}</span>
-                      <input name={key} value={values[key]} readOnly />
-                    </label>
-                  ))}
-                  <label className="field">
-                    <span>연락처 *</span>
-                    <input
-                      name="phone"
-                      type="tel"
-                      value={values.phone}
-                      maxLength={20}
-                      onChange={(e) => change("phone", e.target.value)}
-                    />
-                  </label>
-                </div>
-              </section>
-              <section
-                className={active === "clauses" ? "active" : ""}
-                ref={(el) => (sections.current.clauses = el)}
-                onFocus={() => setActive("clauses")}
-              >
-                <h3>
-                  <b>02</b> 중요한 내용 읽기
-                </h3>
-                {DOCUMENT_CLAUSES[task.id].map((text, i) => (
-                  <p className="important-clause" key={text}>
-                    <strong>확인 {i + 1}</strong>
-                    {text}
-                  </p>
-                ))}
-                <label className="online-check">
-                  <input
-                    name="read"
-                    type="checkbox"
-                    checked={values.read}
-                    onChange={(e) => change("read", e.target.checked)}
-                  />
-                  위 중요 조항을 모두 읽었습니다. *
-                </label>
-                {task.id === "O11" && (
-                  <fieldset className="consent-options">
-                    <legend>개인정보 수집·이용 동의 여부 *</legend>
-                    {[
-                      ["agree", "동의함"],
-                      ["disagree", "동의하지 않음"],
-                    ].map(([v, label]) => (
-                      <label key={v}>
-                        <input
-                          name="consent"
-                          type="radio"
-                          value={v}
-                          checked={values.consent === v}
-                          onChange={() => change("consent", v)}
-                        />
-                        {label}
-                      </label>
-                    ))}
-                    <p>
-                      동의하지 않음을 선택해도 제출할 수 있으며, 담당자에게 별도
-                      확인 요청으로 전달됩니다.
-                    </p>
-                  </fieldset>
-                )}
-                <label className="online-check">
-                  <input
-                    name="acknowledged"
-                    type="checkbox"
-                    checked={values.acknowledged}
-                    onChange={(e) => change("acknowledged", e.target.checked)}
-                  />
-                  작성 내용과 확인 항목을 검토했습니다. *
-                </label>
-              </section>
-              <section
-                className={active === "signature" ? "active" : ""}
-                ref={(el) => (sections.current.signature = el)}
-                onFocus={() => setActive("signature")}
-              >
-                <h3>
-                  <b>03</b> 본인 입력 서명 및 확인
-                </h3>
-                <label className="field">
-                  <span>본인 입력 서명 *</span>
-                  <input
-                    name="signature"
-                    value={values.signature}
-                    maxLength={80}
-                    placeholder="등록 성명을 동일하게 입력해 주세요"
-                    onChange={(e) => change("signature", e.target.value)}
-                  />
-                </label>
-                <div className="demo-verification">
-                  <strong>
-                    <ShieldCheck size={18} />
-                    시연 본인확인 · 실제 인증 아님
-                  </strong>
-                  <p>
-                    이름·연락처 입력만으로 실제 본인인증을 완료한 것으로
-                    처리하지 않습니다. 아래 확인은 연결 흐름 시연용입니다.
-                  </p>
-                  {proof ? (
-                    <p className="verified-proof">
-                      <CheckCircle2 size={17} />
-                      시연 확인 완료 · 내용 변경 시 다시 확인
-                    </p>
-                  ) : (
-                    <>
-                      <button
-                        className="btn"
-                        disabled={formIssues.length > 0}
-                        onClick={() => setRequestCode(true)}
-                      >
-                        시연 확인번호 요청
-                      </button>
-                      {requestCode && (
-                        <div className="verification-code">
-                          <p>
-                            시연 확인번호: <strong>{DEMO_CODE}</strong> · 문자는
-                            발송되지 않습니다.
-                          </p>
-                          <label className="field">
-                            <span>시연 확인번호</span>
-                            <input
-                              name="verification"
-                              inputMode="numeric"
-                              maxLength={6}
-                              value={code}
-                              onChange={(e) => setCode(e.target.value)}
-                            />
-                          </label>
-                          <button
-                            className="btn primary"
-                            onClick={() => {
-                              try {
-                                setProof(
-                                  createDemoProof(
-                                    person,
-                                    task.id,
-                                    values,
-                                    code,
-                                  ),
-                                );
-                                setError("");
-                              } catch (e) {
-                                setError(e.message);
-                              }
-                            }}
-                          >
-                            시연 본인확인
-                          </button>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </section>
-            </div>
+            <OriginalDocument
+              id={task.id}
+              values={values}
+              editable
+              lockedPhone={!!person.phone}
+              active={active}
+              onChange={change}
+              onActive={setActive}
+              rootRef={documentRef}
+            />
           ) : latest ? (
             <div className="online-submitted">
+              <OriginalDocument
+                id={task.id}
+                values={latest.values}
+                editable={false}
+                date={latest.submittedDate || latest.submittedAt.slice(0, 10)}
+              />
               <h2>제출한 내용을 확인하세요</h2>
               <dl>
                 {[
@@ -446,7 +280,7 @@ export default function OnlineDocument({
           </p>
           <div className="online-guide-steps">
             {[
-              ["profile", "01 등록 정보"],
+              ["profile", "01 개인정보"],
               ["clauses", "02 중요 조항"],
               ["signature", "03 서명·확인"],
             ].map(([key, label]) => (
@@ -472,7 +306,7 @@ export default function OnlineDocument({
             {active === "profile"
               ? "등록 정보와 문서가 일치해야 해요"
               : active === "clauses"
-                ? "강조한 조항부터 확인해 주세요"
+                ? "중요 조항을 읽고 확인란을 표시해 주세요"
                 : "등록 성명과 동일하게 서명해 주세요"}
           </h4>
           <p>
@@ -482,6 +316,67 @@ export default function OnlineDocument({
                 ? "서약·수집 항목과 이용 목적을 확인하고 직접 읽음 표시를 해주세요. 동의 여부를 대신 선택하지 않아요."
                 : "서명과 필수 확인을 마치면 시연 본인확인을 할 수 있어요. 내용을 바꾸면 다시 확인해야 해요."}
           </p>
+          {showForm && (
+            <div className="demo-verification" ref={verificationRef}>
+              <strong>
+                <ShieldCheck size={18} />
+                시연 본인확인 · 실제 인증 아님
+              </strong>
+              <p>
+                이름·연락처 입력만으로 실제 본인인증을 완료한 것으로 처리하지
+                않습니다. 아래 확인은 연결 흐름 시연용입니다.
+              </p>
+              {proof ? (
+                <p className="verified-proof">
+                  <CheckCircle2 size={17} />
+                  시연 확인 완료 · 내용 변경 시 다시 확인
+                </p>
+              ) : (
+                <>
+                  <button
+                    className="btn"
+                    disabled={formIssues.length > 0}
+                    onClick={() => setRequestCode(true)}
+                  >
+                    시연 확인번호 요청
+                  </button>
+                  {requestCode && (
+                    <div className="verification-code">
+                      <p>
+                        시연 확인번호: <strong>{DEMO_CODE}</strong> · 문자는
+                        발송되지 않습니다.
+                      </p>
+                      <label className="field">
+                        <span>시연 확인번호</span>
+                        <input
+                          name="verification"
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={code}
+                          onChange={(e) => setCode(e.target.value)}
+                        />
+                      </label>
+                      <button
+                        className="btn primary"
+                        onClick={() => {
+                          try {
+                            setProof(
+                              createDemoProof(person, task.id, values, code),
+                            );
+                            setError("");
+                          } catch (e) {
+                            setError(e.message);
+                          }
+                        }}
+                      >
+                        시연 본인확인
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
           {showForm && (
             <div className="online-missing">
               <strong>제출 전 확인 {issues.length}개</strong>

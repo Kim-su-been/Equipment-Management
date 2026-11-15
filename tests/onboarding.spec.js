@@ -11,6 +11,10 @@ const profile = {
 async function register(page, project = "SFA") {
   await page.goto("/");
   await page
+    .locator(".mode-switch")
+    .getByRole("button", { name: "수행사", exact: true })
+    .click();
+  await page
     .getByRole("button", { name: "수행사 본인 등록", exact: true })
     .click();
   const dialog = page.getByRole("dialog");
@@ -18,7 +22,6 @@ async function register(page, project = "SFA") {
     ["이름 *", "name"],
     ["소속 수행사 *", "company"],
     ["연락처 *", "phone"],
-    ["업무용 이메일 *", "email"],
   ])
     await dialog.getByLabel(label, { exact: true }).fill(profile[key]);
   await dialog.getByLabel("등록 프로젝트").selectOption(project);
@@ -368,4 +371,121 @@ test("registration and online document remain usable at mobile width with visibl
   await fillAndVerify(page);
   await submit(page);
   await expect(dialog).toContainText("제출한 내용을 확인하세요");
+});
+
+test("Readyboard registration is member-only and omits email and role inputs", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page).toHaveTitle(/레디보드/);
+  await expect(
+    page.getByRole("button", { name: "수행사 본인 등록", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.locator(".brand-wordmark")).toHaveCSS(
+    "color",
+    "rgb(255, 255, 255)",
+  );
+  await expect(page.locator(".sidebar")).toHaveCSS(
+    "background-color",
+    "rgb(7, 85, 138)",
+  );
+  await expect(page.locator(".topbar")).toHaveCSS(
+    "background-color",
+    "rgb(0, 103, 172)",
+  );
+  await expect(page.locator("body")).toHaveCSS(
+    "background-color",
+    "rgb(255, 255, 255)",
+  );
+  await page
+    .locator(".mode-switch")
+    .getByRole("button", { name: "수행사", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "수행사 본인 등록", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByLabel(/이메일/)).toHaveCount(0);
+  await expect(dialog.getByLabel(/업무 역할/)).toHaveCount(0);
+  for (const [label, value] of [
+    ["이름 *", "김레디"],
+    ["소속 수행사 *", "준비 시스템"],
+    ["연락처 *", "01033334444"],
+  ])
+    await dialog.getByLabel(label, { exact: true }).fill(value);
+  await dialog
+    .getByRole("button", { name: "등록하고 준비 시작", exact: true })
+    .click();
+  await expect(page.locator("h1")).toContainText("김레디");
+  const person = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("tuip-on-demo-v1")).people.at(-1),
+  );
+  expect(person.email).toBe("");
+  expect(person.role).toBe("");
+});
+
+test("member profile shows name and project without a repeated ID and remains readable on mobile", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page
+    .locator(".mode-switch")
+    .getByRole("button", { name: "수행사", exact: true })
+    .click();
+  await page.getByLabel("수행사 인원 선택").selectOption("SFA-5");
+  await navigate(page, "내 정보");
+  await expect(page.locator(".profile-identity h2")).toHaveText("SFA-5 (SFA)");
+  await expect(page.locator(".profile-details")).toContainText("소속 수행사");
+  await expect(page.locator(".profile-details")).not.toContainText("이메일");
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBeTruthy();
+  await expect(page.locator(".profile-shortcut")).toHaveCount(3);
+});
+
+test("PDF originals align editable controls and highlight fields instead of whole sections", async ({
+  page,
+}) => {
+  await register(page);
+  await openDocument(page);
+  const dialog = page.getByRole("dialog"),
+    original = dialog.locator(".original-document");
+  await expect(original.locator(".original-document-image")).toBeVisible();
+  expect(
+    await original
+      .locator(".original-document-image")
+      .evaluate((image) => image.complete && image.naturalWidth > 0),
+  ).toBeTruthy();
+  await expect(original.locator('[data-input-field="phone"]')).toHaveCount(0);
+  await expect(
+    original.locator('.original-prefill[data-field="name"]'),
+  ).toHaveText(profile.name);
+  await expect(dialog.locator(".online-paper section.active")).toHaveCount(0);
+  await dialog
+    .getByRole("button", { name: "03 서명·확인", exact: true })
+    .click();
+  await expect(
+    original.locator('.original-entry.current input[name="signature"]'),
+  ).toBeFocused();
+  const event = page.waitForEvent("download");
+  await original.getByRole("link", { name: "원본 PDF", exact: true }).click();
+  const pdf = await readFile(await (await event).path());
+  expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+  await original.getByLabel("서약서 확대").selectOption("150");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBeTruthy();
+  await fillAndVerify(page);
+  await submit(page);
+  const event2 = page.waitForEvent("download");
+  await dialog.getByRole("button", { name: "제출 원본", exact: true }).click();
+  const submitted = await readFile(await (await event2).path(), "utf8");
+  expect(submitted).toContain('class="original-sheet"');
+  expect(submitted).toContain("data:image/png;base64,");
+  expect(submitted).toContain(profile.name);
 });
