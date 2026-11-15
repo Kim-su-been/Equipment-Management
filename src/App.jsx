@@ -87,6 +87,24 @@ import {
 import { createProjectTask } from "./project-tasks.js";
 import AddTaskForm from "./AddTaskForm.jsx";
 
+import SelfRegistration from "./SelfRegistration.jsx";
+import OnlineDocument from "./OnlineDocument.jsx";
+import TaskExportForm from "./TaskExportForm.jsx";
+import EvidenceManager from "./EvidenceManager.jsx";
+import ContactRoutes from "./ContactRoutes.jsx";
+import StoredEvidence from "./StoredEvidence.jsx";
+import { registerSelf, createSubmission, todayLocal } from "./onboarding.js";
+import {
+  storeEvidence,
+  readEvidence,
+  clearEvidence,
+} from "./evidence-store.js";
+import { exportTaskWorkbook } from "./task-exports.js";
+import {
+  resolveContact,
+  saveContactRoute,
+  buildDoorayMessage,
+} from "./dooray.js";
 import BrandCharacters from "./BrandCharacters.jsx";
 
 const STORAGE = "tuip-on-demo-v1";
@@ -100,6 +118,7 @@ const NAV = [
 ];
 const MEMBER_NAV = [
   ["dashboard", "나의 투입 준비", LayoutDashboard],
+  ["profile", "내 정보", UserRound],
   ["tasks", "나의 작업", ClipboardList],
   ["education", "교육", GraduationCap],
   ["documents", "서류", FileText],
@@ -414,9 +433,10 @@ export default function App() {
     const current = taskStatus(p, id, data.seats);
     if (!["ready", "progress"].includes(current))
       return notify("선행 작업을 먼저 완료해 주세요.");
-    if (id === "O16" && p.start > TODAY)
+    const confirmationDate = p.selfRegistered ? todayLocal() : TODAY;
+    if (id === "O16" && p.start > confirmationDate)
       return notify(
-        `투입 시작일 ${fmt(p.start)}부터 확정할 수 있습니다. 시연 기준일은 ${fmt(TODAY)}입니다.`,
+        `투입 시작일 ${fmt(p.start)}부터 확정할 수 있습니다. 확인 기준일은 ${fmt(confirmationDate)}입니다.`,
       );
     mutate((d) => {
       const person = d.people.find((x) => x.id === p.id);
@@ -440,7 +460,7 @@ export default function App() {
     });
     notify("작업을 완료했습니다. 연결된 후속 작업이 갱신되었습니다.");
   }
-  function uploadFile(p, id, file) {
+  async function uploadFile(p, id, file) {
     if (!file) return;
     if (admin || p.id !== member.id)
       return notify("수행사 본인 화면에서 제출해 주세요.");
@@ -448,6 +468,16 @@ export default function App() {
       return notify("선행 작업을 먼저 확인해 주세요.");
     if (!/\.(pdf|png|jpe?g)$/i.test(file.name) || file.size > 10 * 1024 * 1024)
       return notify("10MB 이하의 PDF, PNG, JPG 파일을 선택해 주세요.");
+    let stored;
+    try {
+      stored = await storeEvidence(file, {
+        name: file.name,
+        personId: p.id,
+        taskId: id,
+      });
+    } catch (error) {
+      return notify(error.message);
+    }
     const key = `${p.id}-${id}`;
     if (urls.current[key]) URL.revokeObjectURL(urls.current[key]);
     urls.current[key] = URL.createObjectURL(file);
@@ -456,9 +486,17 @@ export default function App() {
       person.files[id] = {
         name: file.name,
         size: `${Math.max(1, Math.round(file.size / 1024))} KB`,
-        date: TODAY,
+        date: new Date().toISOString().slice(0, 10),
         demo: false,
+        storageId: stored.id,
+        digest: stored.digest,
+        version: (person.fileHistory?.[id]?.length || 0) + 1,
       };
+      person.fileHistory ||= {};
+      person.fileHistory[id] = [
+        ...(person.fileHistory[id] || []),
+        structuredClone(person.files[id]),
+      ];
       person.tasks[id] = ["O08", "O09"].includes(id) ? "done" : "ai";
       if (["O08", "O09"].includes(id)) {
         person.certChecks ||= {};
@@ -491,6 +529,93 @@ export default function App() {
         ? "수료증을 등록했습니다. 교육이 완료되었습니다."
         : "서류가 제출되었습니다. AI 검토 화면으로 연결됩니다.",
     );
+  }
+  async function submitOnlineDocument(p, task, values, proof) {
+    if (admin || member.id !== p.id)
+      throw new Error("수행사 본인만 제출할 수 있습니다.");
+    const latestPerson = data.people.find((person) => person.id === p.id);
+    if (!["ready", "fix", "done"].includes(taskStatus(latestPerson, task.id)))
+      throw new Error(
+        "이미 확인 중인 서류입니다. 담당자 결과를 확인해 주세요.",
+      );
+    const submission = createSubmission(latestPerson, task.id, values, proof);
+    const filename = `${p.id}_${task.title}_v${submission.version}.html`;
+    const stored = await storeEvidence(
+      new Blob([submission.html], { type: "text/html;charset=utf-8" }),
+      { name: filename, personId: p.id, taskId: task.id },
+    );
+    const { html, ...record } = submission;
+    const saved = {
+      ...record,
+      filename,
+      storageId: stored.id,
+      digest: stored.digest,
+    };
+    mutate((d) => {
+      const person = d.people.find((person) => person.id === p.id);
+      person.submissions ||= {};
+      person.submissions[task.id] = [
+        ...(person.submissions[task.id] || []),
+        saved,
+      ];
+      person.files[task.id] = {
+        name: filename,
+        size: `${Math.max(1, Math.round(stored.blob.size / 1024))} KB`,
+        date: submission.submittedAt.slice(0, 10),
+        version: submission.version,
+        storageId: stored.id,
+        digest: stored.digest,
+        online: true,
+        demo: true,
+        submittedAt: submission.submittedAt,
+        templateVersion: submission.templateVersion,
+      };
+      person.fileHistory ||= {};
+      person.fileHistory[task.id] = [
+        ...(person.fileHistory[task.id] || []),
+        structuredClone(person.files[task.id]),
+      ];
+      person.tasks[task.id] = "review";
+      person.notes[task.id] =
+        "필수 항목 규칙 검사 완료 · 시연 본인확인 · 담당자 원문 확인 필요";
+      if (task.id === "O11" && values.consent === "disagree")
+        person.notes[task.id] =
+          "개인정보 수집·이용에 동의하지 않음 · 담당자 별도 확인 필요";
+      person.documentDrafts ||= {};
+      delete person.documentDrafts[task.id];
+      person.history.unshift({
+        text: `${task.title} 온라인 제출 v${submission.version} · 규칙 검사 후 담당자 확인 요청`,
+        date: new Date().toLocaleString("ko-KR"),
+      });
+      audit(
+        d,
+        `${p.id} · ${task.title} 확인 요청`,
+        `온라인 제출 v${submission.version} · 실제 인증/AI 미연동`,
+        "document",
+      );
+      addNotice(
+        d,
+        person,
+        `${task.title} 확인 요청`,
+        "온라인 서류의 필수 검사가 끝났습니다. 제출 원본을 검토해 주세요.",
+      );
+    });
+    notify(
+      "온라인 서류와 확인 기록을 보관하고 담당자 확인 요청으로 전달했습니다.",
+    );
+  }
+  async function downloadStoredEvidence(id) {
+    try {
+      const record = await readEvidence(id);
+      if (!record)
+        return notify("현재 브라우저에 원본이 없습니다. 다시 제출해 주세요.");
+      const owner = data.people.find((p) => p.id === record.personId);
+      if (!owner || (admin ? !canEdit(owner) : member.id !== owner.id))
+        return notify("원본에 접근할 수 없습니다.");
+      download(record.blob, record.name);
+    } catch (error) {
+      notify(error.message);
+    }
   }
   function simulateAI(p, id) {
     if (!canEdit(p) && !(mode === "member" && p.id === member.id)) return;
@@ -753,6 +878,9 @@ export default function App() {
                     <Avatar person={p} />
                     <div>
                       <strong>{p.name}</strong>
+                      {p.name !== p.id && (
+                        <span className="person-identifier">{p.id}</span>
+                      )}
                       <span>
                         {p.company} · {p.role}
                       </span>
@@ -1232,6 +1360,12 @@ export default function App() {
           desc="프로젝트 인원과 투입 준비 상태를 한곳에서 관리하세요."
           actions={
             <>
+              <Btn
+                icon={FileText}
+                onClick={() => setModal({ type: "taskExport" })}
+              >
+                작업 양식
+              </Btn>
               <Btn icon={Download} onClick={() => workbook("export")}>
                 엑셀 내보내기
               </Btn>
@@ -1333,6 +1467,14 @@ export default function App() {
               </Btn>
               {admin && (
                 <Btn
+                  icon={Download}
+                  onClick={() => setModal({ type: "taskExport" })}
+                >
+                  작업 양식 다운로드
+                </Btn>
+              )}
+              {admin && (
+                <Btn
                   variant="primary"
                   icon={Plus}
                   onClick={() => setModal({ type: "addTask" })}
@@ -1382,7 +1524,8 @@ export default function App() {
                   <Avatar person={p} small />
                   <div>
                     <h2>
-                      {p.id} <span className="subtle-tag">{p.project}</span>
+                      {p.name !== p.id ? `${p.name} · ${p.id}` : p.id}{" "}
+                      <span className="subtle-tag">{p.project}</span>
                     </h2>
                     <p>
                       {fmt(p.start)} 투입 · {p.project === "SFA" ? "SFA" : "GW"}
@@ -1463,6 +1606,14 @@ export default function App() {
             </div>
           </div>
         </div>
+        <EvidenceManager
+          key={scope}
+          data={data}
+          scope={scope}
+          onDownload={download}
+          onNotify={notify}
+          onOpen={(id, task) => setModal({ type: "document", id, task })}
+        />
         <section className="card">
           <div className="tabs card-tabs">
             {["전체", "확인 요청", "AI 검토 중", "보완 요청", "완료"].map(
@@ -1527,8 +1678,10 @@ export default function App() {
                       </div>
                     </td>
                     <td>
-                      <strong>{p.id}</strong>
-                      <p className="cell-sub">{p.project}</p>
+                      <strong>{p.name || p.id}</strong>
+                      <p className="cell-sub">
+                        {p.id} · {p.project}
+                      </p>
                     </td>
                     <td className="date-text">{fmt(p.files[id].date)}</td>
                     <td>
@@ -2184,6 +2337,79 @@ export default function App() {
       </>
     );
   }
+  function MemberProfile() {
+    return (
+      <>
+        <PageHeading
+          title="내 정보"
+          desc="본인 등록 정보와 자동 배정된 준비 항목을 확인하세요."
+          actions={
+            <Btn
+              icon={UserRound}
+              onClick={() => setModal({ type: "selfRegister" })}
+            >
+              새 수행사 본인 등록
+            </Btn>
+          }
+        />
+        <section className="card member-profile">
+          <div className="card-heading">
+            <h2>
+              {member.name || member.id} · {member.id}
+            </h2>
+            <Badge tone="blue">
+              {member.selfRegistered ? "본인 등록" : "관리자 등록 · 예시"}
+            </Badge>
+          </div>
+          <div className="modal-body detail-grid">
+            {[
+              ["성명", member.name || member.id],
+              ["소속", member.company],
+              ["프로젝트", member.project],
+              ["연락처", member.phone || "미입력"],
+              ["이메일", member.email],
+              ["역할", member.role],
+              ["투입 예정 시작일", member.start],
+              ["투입 예정 종료일", member.end],
+            ].map(([k, v]) => (
+              <div key={k}>
+                <span>{k}</span>
+                <strong>{v}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="card assigned-work">
+          <div className="card-heading">
+            <h2>등록과 함께 배정된 준비</h2>
+          </div>
+          <div className="profile-assignment-grid">
+            {[
+              ["education", "필수 교육", "외부 교육 2개 · 수료증 등록"],
+              ["documents", "온라인 서류", "보안서약서·개인정보 동의서"],
+              ["tasks", "주관사 준비 현황", "계정·출입·좌석 등 연결 작업"],
+            ].map(([id, title, desc]) => (
+              <button className="btn" key={id} onClick={() => go(id)}>
+                <strong>{title}</strong>
+                <span>{desc}</span>
+                <ArrowRight size={17} />
+              </button>
+            ))}
+          </div>
+        </section>
+        <p className="info-note">
+          정보 정정은 담당자에게 요청할 수 있습니다. 예정 기간과 실제 투입·철수
+          실적은 구분하여 관리해야 합니다.
+        </p>
+        <Btn
+          icon={MessageSquare}
+          onClick={() => setModal({ type: "change", id: member.id })}
+        >
+          등록 정보 정정 요청
+        </Btn>
+      </>
+    );
+  }
   function MemberHome() {
     const pct = progress(member, data.seats),
       next = personTasks(member).filter(
@@ -2197,7 +2423,7 @@ export default function App() {
           <div>
             <div className="eyebrow">MY ONBOARDING</div>
             <h1>
-              {member.id}님, 반가워요
+              {member.name || member.id}님, 반가워요
               <span className="heading-dot" />
             </h1>
             <p>새로운 프로젝트의 시작, 투입ON이 함께 준비할게요.</p>
@@ -2531,7 +2757,11 @@ export default function App() {
               const status = taskStatus(member, id, data.seats);
               return (
                 <div className="document-tile" key={id}>
-                  <span className="document-type">PDF</span>
+                  <span className="document-type">
+                    {member.files[id] && !member.files[id].online
+                      ? "등록 파일"
+                      : "온라인 서식"}
+                  </span>
                   <div className="document-tile-top">
                     <span className="large-file">
                       <FileText size={30} />
@@ -2545,7 +2775,11 @@ export default function App() {
                       : "개인정보의 수집 목적과 보유기간을 확인하고 동의 여부를 표시합니다."}
                   </p>
                   <div className="doc-meta">
-                    <span>양식 v1.0</span>
+                    <span>
+                      {member.files[id] && !member.files[id].online
+                        ? "기존 제출 자료"
+                        : "온라인 양식 v2.0 · 시연"}
+                    </span>
                     <span>본인 서명 필수</span>
                   </div>
                   {member.notes[id] && (
@@ -2683,6 +2917,18 @@ export default function App() {
         <PageHeading
           title="운영 기준"
           desc="교육 경로와 알림 정책 등 프로젝트 공통 기준을 관리하세요."
+        />
+        <ContactRoutes
+          key={scope}
+          scope={scope}
+          settings={data.settings}
+          onNotify={notify}
+          onSave={(form) => {
+            const settings = saveContactRoute(data.settings, scope, form);
+            mutate((d) => {
+              d.settings = settings;
+            });
+          }}
         />
         <section className="card settings-card">
           <div className="card-heading">
@@ -2909,6 +3155,8 @@ export default function App() {
               <div className="person-info">
                 <div className="detail-grid">
                   {[
+                    ["성명", p.name || p.id],
+                    ["연락처", p.phone || "미입력"],
                     ["프로젝트", p.project],
                     ["소속 수행사", p.company],
                     ["업무 역할", p.role],
@@ -2968,35 +3216,129 @@ export default function App() {
           </div>
         </Modal>
       );
-    if (modal.type === "document" && p && task)
+    if (modal.type === "selfRegister")
       return (
-        <DocumentDialog
+        <SelfRegistration
+          Modal={Modal}
+          people={data.people}
+          onClose={close}
+          onRegister={(form) => {
+            try {
+              const person = registerSelf(data, form);
+              mutate((d) => {
+                d.people.push(person);
+                audit(
+                  d,
+                  `${person.name} 본인 등록`,
+                  `${person.project} · 교육 2개·서류 2개 및 주관사 작업 자동 배정`,
+                  "person",
+                );
+                addNotice(
+                  d,
+                  person,
+                  "신규 수행사 등록",
+                  `${person.name}님의 투입 준비 작업이 배정되었습니다.`,
+                );
+              });
+              setMode("member");
+              setMemberId(person.id);
+              go("dashboard");
+              notify(
+                "등록했습니다. 교육과 서류를 바로 시작하고 주관사의 준비 상태도 확인할 수 있습니다.",
+              );
+            } catch (error) {
+              notify(error.message);
+            }
+          }}
+        />
+      );
+    if (modal.type === "taskExport" && admin)
+      return (
+        <TaskExportForm
+          Modal={Modal}
+          data={data}
+          scope={scope}
+          onClose={close}
+          onExport={async (selection) => {
+            const result = await exportTaskWorkbook(data, scope, selection);
+            download(result.blob, result.name);
+            notify("선택한 인원의 작업별 예시 양식을 다운로드했습니다.");
+          }}
+        />
+      );
+    if (
+      modal.type === "document" &&
+      p &&
+      task?.kind === "document" &&
+      (modal.online || !p.files[task.id] || p.files[task.id].online)
+    )
+      return (
+        <OnlineDocument
+          Modal={Modal}
+          key={`${p.id}-${task.id}`}
           person={p}
           task={task}
           admin={admin}
-          status={evidenceStatus(p, task.id, data.seats)}
+          status={taskStatus(p, task.id)}
           onClose={close}
-          onUpload={(f) => uploadFile(p, task.id, f)}
-          onSimulate={() => simulateAI(p, task.id)}
-          onReview={(result, note) => review(p, task.id, result, note)}
-          onAsk={(q) => {
-            setAi(true);
-            askAI(q);
+          onDraft={(values) => {
+            if (admin || p.id !== member.id) return;
+            mutate((d) => {
+              const person = d.people.find((x) => x.id === p.id);
+              person.documentDrafts ||= {};
+              person.documentDrafts[task.id] = {
+                values,
+                savedAt: new Date().toISOString(),
+              };
+            });
           }}
+          onSubmit={(values, proof) =>
+            submitOnlineDocument(p, task, values, proof)
+          }
+          onReview={(result, note) => review(p, task.id, result, note)}
+          onDownload={downloadStoredEvidence}
           onNotify={notify}
-          previewUrl={urls.current[`${p.id}-${task.id}`]}
-          onDownload={() =>
-            download(
-              new Blob(
-                [
-                  `${task.title} — 시연용 서식 · 법적 효력 없음\n\n1. 프로젝트 정보\n성명:\n소속:\n프로젝트:\n\n2. 확인할 내용\n업무 목적에 따라 제공된 정보를 안전하게 관리합니다.\n\n3. 본인 확인\n작성일:\n본인 서명:\n\n※ 이 파일은 시연용 안내 텍스트입니다. 운영 양식이 아닙니다.`,
-                ],
-                { type: "text/plain;charset=utf-8" },
-              ),
-              `시연용_${task.title}_안내.txt`,
-            )
+          onInquiry={() =>
+            setModal({ type: "inquiry", id: p.id, task: task.id })
           }
         />
+      );
+    if (modal.type === "document" && p && task)
+      return (
+        <StoredEvidence file={p.files[task.id]}>
+          {(storedUrl) => (
+            <DocumentDialog
+              person={p}
+              task={task}
+              admin={admin}
+              onOnline={() => setModal({ ...modal, online: true })}
+              status={evidenceStatus(p, task.id, data.seats)}
+              onClose={close}
+              onUpload={(f) => uploadFile(p, task.id, f)}
+              onSimulate={() => simulateAI(p, task.id)}
+              onReview={(result, note) => review(p, task.id, result, note)}
+              onAsk={(q) => {
+                setAi(true);
+                askAI(q);
+              }}
+              onNotify={notify}
+              previewUrl={storedUrl || urls.current[`${p.id}-${task.id}`]}
+              onDownload={() =>
+                p.files[task.id]?.storageId
+                  ? downloadStoredEvidence(p.files[task.id].storageId)
+                  : download(
+                      new Blob(
+                        [
+                          `${task.title} — 시연용 서식 · 법적 효력 없음\n\n1. 프로젝트 정보\n성명:\n소속:\n프로젝트:\n\n2. 확인할 내용\n업무 목적에 따라 제공된 정보를 안전하게 관리합니다.\n\n3. 본인 확인\n작성일:\n본인 서명:\n\n※ 이 파일은 시연용 안내 텍스트입니다. 운영 양식이 아닙니다.`,
+                        ],
+                        { type: "text/plain;charset=utf-8" },
+                      ),
+                      `시연용_${task.title}_안내.txt`,
+                    )
+              }
+            />
+          )}
+        </StoredEvidence>
       );
     if (modal.type === "task" && p && task)
       return (
@@ -3206,6 +3548,9 @@ export default function App() {
         <InquiryForm
           person={p || member}
           tasks={personTasks(p || member)}
+          settings={data.settings}
+          getStatus={(id) => taskStatus(p || member, id)}
+          onNotify={notify}
           defaultTask={modal.task}
           change={modal.type === "change"}
           onClose={close}
@@ -3222,6 +3567,9 @@ export default function App() {
                 reply: "",
                 date: new Date().toLocaleString("ko-KR"),
                 status: "접수",
+                contact: form.contact,
+                dooray: form.dooray,
+                delivery: "not_connected",
               });
               addNotice(
                 d,
@@ -3414,6 +3762,11 @@ export default function App() {
               onClick={() => {
                 Object.values(urls.current).forEach(URL.revokeObjectURL);
                 urls.current = {};
+                clearEvidence().catch(() =>
+                  notify(
+                    "보관 원본 초기화에 실패했습니다. 브라우저 저장 공간을 확인해 주세요.",
+                  ),
+                );
                 setData(seed());
                 setSeatDrafts({});
                 setMemberId("SFA-3");
@@ -3714,7 +4067,11 @@ export default function App() {
                   ? ["PMO", "SFA", "그룹웨어"].map((s) => (
                       <option key={s}>{s}</option>
                     ))
-                  : data.people.map((p) => <option key={p.id}>{p.id}</option>)}
+                  : data.people.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name !== p.id ? `${p.name} · ${p.id}` : p.id}
+                      </option>
+                    ))}
               </select>
             </div>
             <span className="header-divider" />
@@ -3739,6 +4096,13 @@ export default function App() {
           </div>
         </header>
         <div className="prototype-strip">
+          <button
+            className="self-register-entry"
+            onClick={() => setModal({ type: "selfRegister" })}
+          >
+            <UserRound size={14} />
+            수행사 본인 등록
+          </button>
           <span>
             <span className="prototype-dot" />
             INTERACTIVE PROTOTYPE
@@ -3776,6 +4140,8 @@ export default function App() {
             )
           ) : page === "dashboard" ? (
             MemberHome()
+          ) : page === "profile" ? (
+            MemberProfile()
           ) : page === "tasks" ? (
             Tasks()
           ) : page === "education" ? (
@@ -4025,6 +4391,7 @@ function DocumentDialog({
   status,
   onClose,
   onUpload,
+  onOnline,
   onSimulate,
   onReview,
   onAsk,
@@ -4055,9 +4422,14 @@ function DocumentDialog({
               <FileText size={15} />
               {file?.name || `${task.title} · 시연용 서식`}
             </span>
+            {!admin && !edu && ["ready", "fix", "done"].includes(status) && (
+              <button className="text-link" onClick={onOnline}>
+                온라인으로 작성
+              </button>
+            )}
             <button className="text-link" onClick={onDownload}>
               <Download size={14} />
-              안내 다운로드
+              {file?.storageId ? "원본 다운로드" : "예시 안내 다운로드"}
             </button>
           </div>
           {previewUrl ? (
@@ -4169,8 +4541,8 @@ function DocumentDialog({
           )}
           <div className="file-storage-note">
             <Lock size={12} />
-            제출 파일명·상태는 이 기기에 저장됩니다. 실제 파일 미리보기는 현재
-            탭에서만 유지됩니다.
+            새로 제출한 원본과 상태는 현재 브라우저에 보관됩니다. 초기 가상
+            제출본에는 원본이 없습니다.
           </div>
         </div>
         <aside className="document-guide">
@@ -4845,6 +5217,9 @@ function InquiryForm({
   tasks = TASKS,
   defaultTask,
   change,
+  settings = {},
+  getStatus = () => "ready",
+  onNotify = () => {},
   onClose,
   onSubmit,
 }) {
@@ -4853,23 +5228,34 @@ function InquiryForm({
     title: "",
     body: "",
   });
+  const contact = resolveContact(settings, person, form.task);
+  const relatedTask = tasks.find((t) => t.id === form.task) || tasks[0];
+  const payload = buildDoorayMessage(
+    person,
+    relatedTask,
+    form.title,
+    form.body,
+    STATUS[getStatus(form.task)]?.[0] || getStatus(form.task),
+    contact,
+  );
   return (
     <Modal
       title={change ? "투입 정보 변경 요청" : "담당자에게 문의"}
-      subtitle={`${person.id} · ${person.project === "SFA" ? "SFA" : "GW"}-담당자에게 연결됩니다.`}
+      subtitle={`${person.name || person.id} · ${contact.name}에게 연결됩니다.`}
       onClose={onClose}
     >
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          onSubmit(form);
+          onSubmit({ ...form, contact, dooray: payload });
         }}
       >
         <div className="modal-body">
           <div className="notice">
             <Link2 size={17} />
-            인원·프로젝트·작업 정보를 함께 전달합니다. 두레이 외부 전송은 하지
-            않습니다.
+            담당자: {contact.name} · Dooray 수신자{" "}
+            {contact.memberId || "미설정"}. 앱 내 접수와 문의문 복사를
+            지원합니다. Dooray API는 미연동이며 외부 메시지는 전송되지 않습니다.
           </div>
           <label className="field">
             <span>관련 작업</span>
@@ -4908,6 +5294,29 @@ function InquiryForm({
               onChange={(e) => setForm({ ...form, body: e.target.value })}
             />
           </label>
+          <div className="dooray-preview">
+            <strong>Dooray 문의 초안 · 자동 연결 정보</strong>
+            <pre>{payload.text}</pre>
+            <button
+              type="button"
+              className="btn"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(payload.text);
+                  onNotify(
+                    "담당자와 작업 정보가 포함된 문의문을 복사했습니다.",
+                  );
+                } catch {
+                  onNotify(
+                    "자동 복사를 사용할 수 없습니다. 표시된 문의 초안을 직접 복사해 주세요.",
+                  );
+                }
+              }}
+            >
+              Dooray 문의문 복사
+            </button>
+            <span>외부 전송 미연동</span>
+          </div>
         </div>
         <footer>
           <Btn type="button" onClick={onClose}>

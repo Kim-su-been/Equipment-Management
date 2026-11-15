@@ -148,7 +148,18 @@ export const STATUS = {
 };
 export function tasksForPerson(person, customTasks = []) {
   return [
-    ...TASKS,
+    ...TASKS.map((task) => {
+      if (!person.selfRegistered) return task;
+      if (task.id === "O01")
+        return {
+          ...task,
+          owner: "member",
+          desc: "본인 정보 등록이 완료되어 준비 작업이 자동 배정되었습니다.",
+        };
+      return ["O08", "O09"].includes(task.id)
+        ? { ...task, deps: ["O01"] }
+        : task;
+    }),
     ...customTasks.filter(
       (task) =>
         (task.project === "전체" || task.project === person.project) &&
