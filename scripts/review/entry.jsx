@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import App from "../../src/App.jsx";
 import { InvitePortal, ContinueRegistration } from "../../src/AccessPortal.jsx";
-import dataset from "../../artifacts/review-data.json";
+import dataset from "./seed.json";
 import { installDemoApi } from "./adapter.js";
 import "../../src/styles.css";
 import "../../src/woori-theme.css";
@@ -105,7 +105,13 @@ function Demo() {
     <>
       <div className="review-toolbar" ref={bar}>
         <div className="demo-description">
-          <b>레디보드 · HTML 단독 시연</b>
+          <b>
+            레디보드 · HTML 단독 시연{" "}
+            <small className="demo-build">
+              {document.querySelector('meta[name="readyboard-build"]')
+                ?.content || "브라우저 모드"}
+            </small>
+          </b>
           <span>
             {controller.storageKind === "IndexedDB"
               ? "명단·파일·검토 이력을 이 브라우저에 저장합니다."

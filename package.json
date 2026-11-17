@@ -16,7 +16,10 @@
     "start": "node server/index.mjs",
     "export:review": "node scripts/review/generate.mjs",
     "export:server-html": "node scripts/export-server-html.mjs",
-    "test:html": "node tests/review-html.mjs && node tests/offline-html.mjs"
+    "test:html": "node tests/review-html.mjs && node tests/offline-html.mjs",
+    "build:offline": "node scripts/build-offline.mjs",
+    "build:vercel": "npm run build:offline",
+    "test:deployment": "node tests/static-deployment.mjs"
   },
   "dependencies": {
     "ajv": "^8.20.0",

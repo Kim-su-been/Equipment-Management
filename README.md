@@ -12,6 +12,19 @@ PMO가 인력계획서와 메일 요청을 확인해 명단을 관리하고, 수
 
 소스에서 다시 만들 때는 `npm ci` 후 `npm run export:html`을 실행합니다. 만들어진 HTML을 사용하는 사람은 Node.js나 서버가 필요하지 않습니다.
 
+## Vercel 배포
+
+저장소의 `vercel.json`이 **`npm run build:offline` → `dist/index.html`**을 배포합니다. Vercel에서는 별도 API/DB 없이 브라우저 저장 방식의 시연이 열립니다. 빌드는 최신 소스와 합성 초기 명단으로 단일 HTML을 생성하며 API 서버·SQLite를 실행하지 않습니다. `/api/session` 호출로 시작하던 서버형 Vite 빌드를 Vercel 배포에 사용하지 않습니다.
+
+Git 연동 Production Branch가 `master`인지 확인하고 새 커밋의 배포가 **Ready**가 되면 **Visit** 또는 프로젝트의 Production Domain으로 여세요. `...-50vyqscy8-...vercel.app`처럼 배포별 주소는 이전 결과를 계속 가리킬 수 있으므로 새 배포 주소를 사용합니다. 화면 상단에 HTML 단독 시연과 빌드 버전이 표시됩니다.
+
+로컬 배포 산출물 검증:
+
+```bash
+npm run build:offline
+npm run test:deployment
+```
+
 ## 서버형 서비스 실행
 
 **Node.js 22.13 이상**이 필요합니다. 이번 검증은 Node.js 24.22.1에서 진행했습니다. React 19/Vite 7, ExcelJS와 Node HTTP 서버, 내장 SQLite를 사용합니다.

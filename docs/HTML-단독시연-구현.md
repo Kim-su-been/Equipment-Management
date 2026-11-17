@@ -42,7 +42,7 @@ HTML만 전달하면 초기 합성 명단이 보이고 다른 PC의 변경 사�
 - `src/personnel-records.js`, `src/personnel-workflow.js`, `src/mail-application.js`, `src/mail-request-validation.js`: 같은 UUID 인원 생성·개인별 작업/일정 변경·메일 초안 검증.
 - 기존 `PlanImport`, `SelfRegistration`, `OnlineDocument`, `EvidenceManager`, `MailReviewPage` 등 실제 UI를 그대로 렌더링한다. 파일 모드의 초대는 `/invite/...` 서버 경로 대신 같은 HTML의 `#invite=...` 경로를 사용한다.
 
-단일 HTML에 JS·CSS·폰트·캐릭터·서류 원본·예제 XLSX를 포함한다. `export:html`과 기존 미리보기 다운로드 경로는 전체 브라우저 시연을 생성한다. 서버 연결용 자산 내보내기는 `export:server-html`로 따로 제공한다.
+단일 HTML에 JS·CSS·폰트·캐릭터·서류 원본·예제 XLSX를 포함한다. `export:html`과 기존 미리보기 다운로드 경로는 전체 브라우저 시연을 생성한다. 초기 명단은 버전 관리하는 합성 데이터 `scripts/review/seed.json`을 사용하므로 내보내기 중 API 서버·SQLite·비밀값이 필요하지 않다. 서버 연결용 자산 내보내기는 `export:server-html`로 따로 제공한다.
 
 ## 다시 생성 및 검증
 
@@ -58,3 +58,15 @@ npm run build
 `tests/review-html.mjs`는 기존 5통/2초안·개별 승인·재확인을 검사한다. `tests/offline-html.mjs`는 네트워크를 끄고 API 서버 없이 생성된 HTML만 브라우저에 로드하여 XLSX·초대·본인 등록·문서·수료증·승인·원본 ZIP/양식 다운로드·작업 추가·권한 범위·새로고침·백업/초기화/복원을 검사한다. 업로드한 파일과 복원한 원본 바이트도 비교하며 실제 네트워크 API 호출이 없는지 확인한다.
 
 검증 결과: 기존 서버·로직 테스트 41개, 서버형 브라우저 시나리오 8개, 단독 HTML 검증 2개 스크립트 모두 통과했다. 독립 HTML은 네트워크를 끈 상태에서 추가 API 요청 없이 동작했다. A/B 양식, 동명이인·생년 확인, 링크 만료·재발급·중복 제출, 원본 ZIP CRC, 백업 복원 후 원본 바이트 일치도 확인했다. 프로덕션 빌드도 성공했다.
+
+## Vercel의 서버 연결 안내 수정
+
+Vercel이 기존 `npm run build`의 서버형 `src/main.jsx`를 배포하면 `/api/session`을 호출하지만 정적 호스팅에는 해당 API가 없어 서버 연결 안내가 나온다. 다운로드용 HTML만 수정해서는 Vercel의 기본 배포가 바뀌지 않는다.
+
+`vercel.json`에 `buildCommand: npm run build:offline`, `outputDirectory: dist`와 SPA 경로 설정을 추가했다. `scripts/build-offline.mjs`가 매 빌드마다 최신 소스로 단일 HTML을 생성하고 `dist/index.html`에 배치한다. 이 산출물은 처음부터 브라우저 저장 API를 설치해 서버형 로그인으로 진입하지 않는다. 화면 상단과 HTML 메타 정보에 모드·빌드 버전을 표시한다.
+
+`npm run test:deployment`는 API가 없는 정적 호스팅과 같은 조건에서 루트 주소를 열어 초기 화면, 메일 5통/초안 2건, 새로고침 유지, 역할 전환과 네트워크 API 요청 0건을 검증한다. 서버형 빌드/실행 명령은 기존대로 사용할 수 있다.
+
+기존 배포별 URL은 새 커밋을 push해도 내용이 바뀌지 않을 수 있다. Vercel Deployments에서 새 커밋이 Ready가 된 뒤 해당 배포의 Visit 또는 Production Domain을 사용한다.
+
+Vercel 경로 수정 검증: `build:offline` 성공, `test:deployment`에서 네트워크 API 요청 0건·루트 진입·메일 5통/초안 2건·새로고침·역할 전환 통과, `test:html`의 두 전체 시연 스크립트 통과, 기존 서버·로직 41개 통과. `.env`, `data`, `artifacts`, `dist`가 없는 새 체크아웃 조건에서도 같은 정적 빌드를 생성했다. 실제 Vercel 주소는 검증 환경의 네트워크 정책에서 403으로 차단되어 원격 배포 화면까지 확인하지는 못했다.

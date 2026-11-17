@@ -1,0 +1,651 @@
+{
+  "kimId": "554c84b6-c3f6-41e4-a9ed-180f1c457911",
+  "stages": {
+    "before": {
+      "states": {
+        "pmo": {
+          "customTasks": [],
+          "messages": [
+            {
+              "id": "m1",
+              "personId": "95b9b8e5-34fe-5608-a1f8-0a732c168b64",
+              "project": "그룹웨어",
+              "task": "O10",
+              "title": "서명 위치를 확인하고 싶어요",
+              "body": "보안서약서 마지막 페이지에 서명하면 되나요?",
+              "reply": "",
+              "date": "2026.11.09 13:20",
+              "status": "접수"
+            }
+          ],
+          "notifications": [
+            {
+              "id": "n1",
+              "title": "GW-2님의 서류 확인 요청",
+              "body": "보안서약서 등 2건의 AI 사전 검토가 끝났습니다.",
+              "project": "그룹웨어",
+              "read": false
+            },
+            {
+              "id": "n2",
+              "title": "SFA-2님의 서류가 분석 중입니다",
+              "body": "AI 결과가 준비되면 확인 요청이 표시됩니다.",
+              "project": "SFA",
+              "read": false
+            }
+          ],
+          "settings": {
+            "O08": "",
+            "O09": "",
+            "reminder": true
+          },
+          "activity": [
+            {
+              "id": 2,
+              "title": "GW-2 서류 확인 요청",
+              "desc": "보안서약서, 개인정보 수집·이용 동의서",
+              "time": "10:40",
+              "type": "document"
+            },
+            {
+              "id": 3,
+              "title": "SFA 프로젝트 인원 등록",
+              "desc": "SFA-담당자 · 5명 등록",
+              "time": "09:10",
+              "type": "person"
+            }
+          ],
+          "people": [
+            {
+              "id": "604c56e4-1b43-5763-ad2d-a2ee5a75279f",
+              "name": "SFA-1",
+              "project": "SFA",
+              "company": "SFA 수행사",
+              "role": "PL",
+              "email": "sfa-1@demo.example",
+              "start": "2026-11-09",
+              "end": "2027-02-26",
+              "lifecycle": "투입 중",
+              "tasks": {
+                "O01": "done",
+                "O02": "done",
+                "O03": "done",
+                "O04": "done",
+                "O05": "done",
+                "O06": "done",
+                "O08": "done",
+                "O09": "done",
+                "O10": "done",
+                "O11": "done",
+                "O12": "done",
+                "O13": "done",
+                "O16": "done"
+              },
+              "files": {
+                "O08": {
+                  "name": "SFA-1_정보보안 교육.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                },
+                "O09": {
+                  "name": "SFA-1_개인정보보호 교육.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                },
+                "O10": {
+                  "name": "SFA-1_보안서약서.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                },
+                "O11": {
+                  "name": "SFA-1_개인정보 수집_이용 동의서.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                }
+              },
+              "certChecks": {
+                "O08": "done",
+                "O09": "done"
+              },
+              "notes": {},
+              "history": [],
+              "registrationStatus": "registered",
+              "displayId": "SFA-1",
+              "legacyId": "SFA-1",
+              "projectId": "project-1",
+              "companyId": "5f2a63b4-8aae-43be-89dd-45a21995866b",
+              "recordVersion": 1
+            },
+            {
+              "id": "f422425f-2a09-5b56-aa19-647602d253ec",
+              "name": "SFA-2",
+              "project": "SFA",
+              "company": "SFA 수행사",
+              "role": "개발자",
+              "email": "sfa-2@demo.example",
+              "start": "2026-11-16",
+              "end": "2027-02-26",
+              "lifecycle": "투입 예정",
+              "tasks": {
+                "O01": "done",
+                "O02": "done",
+                "O03": "done",
+                "O04": "done",
+                "O05": "done",
+                "O06": "done",
+                "O08": "done",
+                "O09": "done",
+                "O10": "ai",
+                "O11": "ai"
+              },
+              "files": {
+                "O08": {
+                  "name": "SFA-2_정보보안 교육.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                },
+                "O09": {
+                  "name": "SFA-2_개인정보보호 교육.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                },
+                "O10": {
+                  "name": "SFA-2_보안서약서.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                },
+                "O11": {
+                  "name": "SFA-2_개인정보 수집_이용 동의서.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                }
+              },
+              "certChecks": {
+                "O08": "review",
+                "O09": "review"
+              },
+              "notes": {},
+              "history": [],
+              "registrationStatus": "registered",
+              "displayId": "SFA-2",
+              "legacyId": "SFA-2",
+              "projectId": "project-1",
+              "companyId": "5f2a63b4-8aae-43be-89dd-45a21995866b",
+              "recordVersion": 1
+            },
+            {
+              "id": "f4503149-3fa2-564a-a882-47cbcb58e874",
+              "name": "SFA-3",
+              "project": "SFA",
+              "company": "SFA 수행사",
+              "role": "개발자",
+              "email": "sfa-3@demo.example",
+              "start": "2026-11-16",
+              "end": "2027-02-26",
+              "lifecycle": "투입 예정",
+              "tasks": {
+                "O01": "done",
+                "O02": "done",
+                "O03": "done",
+                "O04": "done",
+                "O05": "done",
+                "O06": "done"
+              },
+              "files": {},
+              "certChecks": {},
+              "notes": {},
+              "history": [],
+              "registrationStatus": "registered",
+              "displayId": "SFA-3",
+              "legacyId": "SFA-3",
+              "projectId": "project-1",
+              "companyId": "5f2a63b4-8aae-43be-89dd-45a21995866b",
+              "recordVersion": 1
+            },
+            {
+              "id": "8c5821bb-5c0e-5cd8-a3f8-5be50dd88bc1",
+              "name": "SFA-4",
+              "project": "SFA",
+              "company": "SFA 수행사",
+              "role": "개발자",
+              "email": "sfa-4@demo.example",
+              "start": "2026-11-16",
+              "end": "2027-02-26",
+              "lifecycle": "투입 예정",
+              "tasks": {
+                "O01": "done",
+                "O02": "done",
+                "O04": "done",
+                "O03": "progress",
+                "O05": "progress"
+              },
+              "files": {},
+              "certChecks": {},
+              "notes": {},
+              "history": [],
+              "registrationStatus": "registered",
+              "displayId": "SFA-4",
+              "legacyId": "SFA-4",
+              "projectId": "project-1",
+              "companyId": "5f2a63b4-8aae-43be-89dd-45a21995866b",
+              "recordVersion": 1
+            },
+            {
+              "id": "b2ef5a4a-38be-5cdb-ac8f-3f0a00bb8c4c",
+              "name": "SFA-5",
+              "project": "SFA",
+              "company": "SFA 수행사",
+              "role": "기획자",
+              "email": "sfa-5@demo.example",
+              "start": "2026-11-16",
+              "end": "2027-02-26",
+              "lifecycle": "투입 예정",
+              "tasks": {
+                "O01": "done"
+              },
+              "files": {},
+              "certChecks": {},
+              "notes": {},
+              "history": [],
+              "registrationStatus": "registered",
+              "displayId": "SFA-5",
+              "legacyId": "SFA-5",
+              "projectId": "project-1",
+              "companyId": "5f2a63b4-8aae-43be-89dd-45a21995866b",
+              "recordVersion": 1
+            },
+            {
+              "id": "eb3e0c1b-63ff-538b-abbb-7eca334c5cc4",
+              "name": "GW-1",
+              "project": "그룹웨어",
+              "company": "그룹웨어 수행사",
+              "role": "PL",
+              "email": "gw-1@demo.example",
+              "start": "2026-11-09",
+              "end": "2027-02-26",
+              "lifecycle": "투입 중",
+              "tasks": {
+                "O01": "done",
+                "O02": "done",
+                "O03": "done",
+                "O04": "done",
+                "O05": "done",
+                "O06": "done",
+                "O08": "done",
+                "O09": "done",
+                "O10": "done",
+                "O11": "done",
+                "O12": "done",
+                "O13": "done",
+                "O16": "done"
+              },
+              "files": {
+                "O08": {
+                  "name": "GW-1_정보보안 교육.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                },
+                "O09": {
+                  "name": "GW-1_개인정보보호 교육.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                },
+                "O10": {
+                  "name": "GW-1_보안서약서.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                },
+                "O11": {
+                  "name": "GW-1_개인정보 수집_이용 동의서.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                }
+              },
+              "certChecks": {
+                "O08": "done",
+                "O09": "done"
+              },
+              "notes": {},
+              "history": [],
+              "registrationStatus": "registered",
+              "displayId": "GW-1",
+              "legacyId": "GW-1",
+              "projectId": "project-2",
+              "companyId": "206e9b34-afce-419a-b5d2-43adf57487d4",
+              "recordVersion": 1
+            },
+            {
+              "id": "95b9b8e5-34fe-5608-a1f8-0a732c168b64",
+              "name": "GW-2",
+              "project": "그룹웨어",
+              "company": "그룹웨어 수행사",
+              "role": "개발자",
+              "email": "gw-2@demo.example",
+              "start": "2026-11-16",
+              "end": "2027-02-26",
+              "lifecycle": "투입 예정",
+              "tasks": {
+                "O01": "done",
+                "O02": "done",
+                "O03": "done",
+                "O04": "done",
+                "O05": "done",
+                "O06": "done",
+                "O08": "done",
+                "O09": "done",
+                "O10": "review",
+                "O11": "review"
+              },
+              "files": {
+                "O08": {
+                  "name": "GW-2_정보보안 교육.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                },
+                "O09": {
+                  "name": "GW-2_개인정보보호 교육.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                },
+                "O10": {
+                  "name": "GW-2_보안서약서.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                },
+                "O11": {
+                  "name": "GW-2_개인정보 수집_이용 동의서.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                }
+              },
+              "certChecks": {
+                "O08": "done",
+                "O09": "done"
+              },
+              "notes": {
+                "O10": "서명란이 비어 있는 것으로 보입니다. 원문 확인 후 보완을 요청해 주세요."
+              },
+              "history": [],
+              "registrationStatus": "registered",
+              "displayId": "GW-2",
+              "legacyId": "GW-2",
+              "projectId": "project-2",
+              "companyId": "206e9b34-afce-419a-b5d2-43adf57487d4",
+              "recordVersion": 1
+            },
+            {
+              "id": "87bf838a-988b-57cd-a805-021a4157557a",
+              "name": "GW-3",
+              "project": "그룹웨어",
+              "company": "그룹웨어 수행사",
+              "role": "개발자",
+              "email": "gw-3@demo.example",
+              "start": "2026-11-16",
+              "end": "2027-02-26",
+              "lifecycle": "투입 예정",
+              "tasks": {
+                "O01": "done",
+                "O02": "done",
+                "O03": "done",
+                "O04": "done",
+                "O05": "done",
+                "O06": "done",
+                "O10": "error",
+                "O11": "error"
+              },
+              "files": {
+                "O10": {
+                  "name": "GW-3_보안서약서.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                },
+                "O11": {
+                  "name": "GW-3_개인정보 수집_이용 동의서.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                }
+              },
+              "certChecks": {},
+              "notes": {
+                "O10": "시연용 분석 실패입니다. 담당자가 수동으로 확인할 수 있습니다."
+              },
+              "history": [],
+              "registrationStatus": "registered",
+              "displayId": "GW-3",
+              "legacyId": "GW-3",
+              "projectId": "project-2",
+              "companyId": "206e9b34-afce-419a-b5d2-43adf57487d4",
+              "recordVersion": 1
+            },
+            {
+              "id": "a84c63ff-d362-5836-a8f1-3e8e9ee31e49",
+              "name": "GW-4",
+              "project": "그룹웨어",
+              "company": "그룹웨어 수행사",
+              "role": "개발자",
+              "email": "gw-4@demo.example",
+              "start": "2026-11-16",
+              "end": "2027-02-26",
+              "lifecycle": "투입 예정",
+              "tasks": {
+                "O01": "done",
+                "O02": "done",
+                "O03": "done",
+                "O04": "done",
+                "O05": "progress"
+              },
+              "files": {},
+              "certChecks": {},
+              "notes": {},
+              "history": [],
+              "registrationStatus": "registered",
+              "displayId": "GW-4",
+              "legacyId": "GW-4",
+              "projectId": "project-2",
+              "companyId": "206e9b34-afce-419a-b5d2-43adf57487d4",
+              "recordVersion": 1
+            },
+            {
+              "id": "db531bbe-01aa-593a-aae2-2e3acab40690",
+              "name": "GW-5",
+              "project": "그룹웨어",
+              "company": "그룹웨어 수행사",
+              "role": "기획자",
+              "email": "gw-5@demo.example",
+              "start": "2026-11-10",
+              "end": "2027-02-26",
+              "lifecycle": "투입 예정",
+              "tasks": {
+                "O01": "done",
+                "O02": "done",
+                "O03": "done",
+                "O04": "done",
+                "O05": "done",
+                "O06": "done",
+                "O08": "done",
+                "O09": "done",
+                "O10": "done",
+                "O11": "done",
+                "O12": "done",
+                "O13": "done"
+              },
+              "files": {
+                "O08": {
+                  "name": "GW-5_정보보안 교육.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                },
+                "O09": {
+                  "name": "GW-5_개인정보보호 교육.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                },
+                "O10": {
+                  "name": "GW-5_보안서약서.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                },
+                "O11": {
+                  "name": "GW-5_개인정보 수집_이용 동의서.pdf",
+                  "size": "248 KB",
+                  "date": "2026-11-09",
+                  "demo": true
+                }
+              },
+              "certChecks": {
+                "O08": "done",
+                "O09": "done"
+              },
+              "notes": {},
+              "history": [],
+              "registrationStatus": "registered",
+              "displayId": "GW-5",
+              "legacyId": "GW-5",
+              "projectId": "project-2",
+              "companyId": "206e9b34-afce-419a-b5d2-43adf57487d4",
+              "recordVersion": 1
+            },
+            {
+              "id": "554c84b6-c3f6-41e4-a9ed-180f1c457911",
+              "displayId": "SFA-6",
+              "project": "SFA",
+              "name": "김민수",
+              "company": "샘플테크",
+              "birthDate": "1990-01-01",
+              "birthYear": 1990,
+              "birthMonth": 1,
+              "birthDay": 1,
+              "birthPrecision": "date",
+              "birthReview": "정상",
+              "registrationStatus": "registered",
+              "lifecycle": "투입 예정",
+              "start": "2026-11-23",
+              "end": "2027-06-30",
+              "phone": "01012345678",
+              "email": "",
+              "role": "",
+              "tasks": {
+                "O01": "done",
+                "O08": "done"
+              },
+              "files": {
+                "O08": {
+                  "name": "검토용_기존수료증.pdf",
+                  "demo": true
+                }
+              },
+              "certChecks": {
+                "O08": "done"
+              },
+              "notes": {},
+              "history": [
+                {
+                  "text": "개인 초대 링크로 본인 등록 완료",
+                  "date": "2026. 11. 17. 오전 7:20:24"
+                },
+                {
+                  "text": "인력계획서 메일검토기준 2행 본인 등록 대기 생성",
+                  "date": "2026. 11. 17. 오전 7:20:24"
+                }
+              ],
+              "profileRevision": 2,
+              "importSources": [
+                {
+                  "importId": "47bc19e1-0172-4d51-b809-91ba1f75d640",
+                  "fileHash": "41844a3a7fac000521af5173451df2122e1af12ed48b4a4061d6e3380fb15c46",
+                  "filename": "preview.xlsx",
+                  "sheet": "메일검토기준",
+                  "sheetIndex": 0,
+                  "row": 2,
+                  "original": {
+                    "company": "샘플테크",
+                    "name": "김민수",
+                    "birthRaw": "1990-01-01"
+                  },
+                  "confirmed": {
+                    "name": "김민수",
+                    "company": "샘플테크",
+                    "birthRaw": "1990-01-01"
+                  },
+                  "decision": "new",
+                  "at": "2026-11-17T07:20:24.462Z"
+                }
+              ],
+              "projectId": "project-1",
+              "companyId": "988cef74-5e1e-48ff-b6c6-874ecde39ac8",
+              "registeredAt": "2026-11-17T07:20:24.494Z",
+              "selfRegistered": true,
+              "taskOverrides": {
+                "O02": {
+                  "due": "2026-11-20"
+                },
+                "O03": {
+                  "due": "2026-11-22"
+                },
+                "O04": {
+                  "due": "2026-11-20"
+                },
+                "O05": {
+                  "due": "2026-11-22"
+                },
+                "O06": {
+                  "due": "2026-11-22"
+                },
+                "O08": {
+                  "due": "2026-11-22"
+                },
+                "O09": {
+                  "due": "2026-11-22"
+                },
+                "O10": {
+                  "due": "2026-11-22"
+                },
+                "O11": {
+                  "due": "2026-11-22"
+                },
+                "O13": {
+                  "due": "2026-11-22"
+                },
+                "O16": {
+                  "due": "2026-11-23"
+                }
+              },
+              "recordVersion": 3
+            }
+          ],
+          "revision": 4,
+          "projects": ["SFA", "그룹웨어"],
+          "companies": ["SFA 수행사", "그룹웨어 수행사", "샘플테크"]
+        }
+      },
+      "inbox": {
+        "settings": {
+          "folder": "PMO/인력요청",
+          "search": "",
+          "since": ""
+        }
+      }
+    }
+  }
+}
