@@ -117,8 +117,9 @@ export default function PlanImport({
               </strong>
               <p>{upload.proposal.notice}</p>
               <p>
-                AI에는 구조와 마스킹한 샘플만 전송하며, 아래 값은 원본 셀에서
-                추출합니다.
+                {globalThis.__READYBOARD_OFFLINE__
+                  ? "HTML 시연은 브라우저에서 열 이름으로 매핑을 제안하며 외부 AI로 데이터를 전송하지 않습니다. 아래 값은 원본 셀에서 추출합니다."
+                  : "AI에는 구조와 마스킹한 샘플만 전송하며, 아래 값은 원본 셀에서 추출합니다."}
               </p>
             </div>
             <div className="mapping-grid">
@@ -426,7 +427,7 @@ export default function PlanImport({
                   })
                 }
               >
-                {busy ? "처리 중…" : `${selected.length}행 확정 · 서버 저장`}
+                {busy ? "처리 중…" : `${selected.length}행 확정 · 저장`}
               </button>
             </div>
           </>

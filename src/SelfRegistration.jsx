@@ -43,7 +43,8 @@ export default function SelfRegistration({ person, token, onComplete }) {
               `/api/invites/${encodeURIComponent(token)}`,
               { method: "POST", body: form },
             );
-            history.replaceState(null, "", "/");
+            if (!globalThis.__READYBOARD_OFFLINE__)
+              history.replaceState(null, "", "/");
             onComplete(result);
           } catch (e) {
             setError(e.message);
@@ -181,7 +182,7 @@ export default function SelfRegistration({ person, token, onComplete }) {
             disabled={busy || different || !form.confirmed}
           >
             <CheckCircle2 size={16} />
-            {busy ? "서버에 저장 중…" : "등록 완료하고 준비 시작"}
+            {busy ? "저장 중…" : "등록 완료하고 준비 시작"}
           </button>
         </footer>
       </form>

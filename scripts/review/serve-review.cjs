@@ -3,13 +3,15 @@ const http = require("node:http"),
   path = require("node:path"),
   { spawn } = require("node:child_process");
 const server = http.createServer((req, res) => {
-  if (!["/", "/readyboard-review.html"].includes(req.url)) {
+  if (!["/", "/readyboard-offline.html"].includes(req.url)) {
     res.writeHead(404);
     res.end();
     return;
   }
   res.setHeader("Content-Type", "text/html; charset=utf-8");
-  fs.createReadStream(path.join(__dirname, "readyboard-review.html")).pipe(res);
+  fs.createReadStream(path.join(__dirname, "readyboard-offline.html")).pipe(
+    res,
+  );
 });
 server.listen(0, "127.0.0.1", () => {
   const url = `http://127.0.0.1:${server.address().port}`;

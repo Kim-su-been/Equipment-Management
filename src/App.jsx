@@ -598,8 +598,7 @@ export default function App({ initialState, actor, onLogout }) {
   async function downloadStoredEvidence(id) {
     try {
       const record = await readEvidence(id);
-      if (!record)
-        return notify("서버에 보관된 원본이 없습니다. 다시 제출해 주세요.");
+      if (!record) return notify("보관된 원본이 없습니다. 다시 제출해 주세요.");
       const owner = data.people.find((p) => p.id === record.personId);
       if (!owner || (admin ? !canEdit(owner) : member.id !== owner.id))
         return notify("원본에 접근할 수 없습니다.");
@@ -2750,7 +2749,7 @@ export default function App({ initialState, actor, onLogout }) {
             close();
             go("people");
             notify(
-              "확정한 인원을 서버에 저장했습니다. 개인 초대 링크를 발급해 주세요.",
+              "확정한 인원을 저장했습니다. 개인 초대 링크를 발급해 주세요.",
             );
           }}
         />
@@ -3174,9 +3173,9 @@ export default function App({ initialState, actor, onLogout }) {
             </ol>
             <div className="notice">
               <Monitor size={18} />
-              명단·상태·원본은 서버에 저장합니다. 문서 가이드·본인확인은 시연
-              기능이며 Dooray 전송은 미연동입니다. 인력계획서 AI 매핑은 서버의
-              AI 키 설정 시 사용할 수 있습니다.
+              {globalThis.__READYBOARD_OFFLINE__
+                ? "명단·상태·원본은 이 브라우저에 저장합니다. 상단에서 수행사와 담당자를 바꾸어 시연하세요. 시연 백업에 업로드 원본도 포함됩니다. 외부 메일·AI·본인확인·메신저는 시연입니다."
+                : "명단·상태·원본은 서버에 저장합니다. 문서 가이드·본인확인은 시연 기능이며 Dooray 전송은 미연동입니다. 인력계획서 AI 매핑은 서버의 AI 키 설정 시 사용할 수 있습니다."}
             </div>
           </div>
         </Modal>
@@ -3402,8 +3401,9 @@ export default function App({ initialState, actor, onLogout }) {
             INTERACTIVE PROTOTYPE
           </span>
           <p>
-            서버에 저장한 인원과 준비 상태를 연결합니다. 교육·서류 AI 가이드는
-            시연용입니다.
+            {globalThis.__READYBOARD_OFFLINE__
+              ? "이 브라우저에 저장한 명단과 준비 상태를 연결합니다. 상단에서 시연 역할을 전환할 수 있습니다."
+              : "서버에 저장한 인원과 준비 상태를 연결합니다. 교육·서류 AI 가이드는 시연용입니다."}
           </p>
           <button onClick={() => setModal({ type: "help" })}>
             시연 가이드
@@ -3411,7 +3411,11 @@ export default function App({ initialState, actor, onLogout }) {
           </button>
         </div>
         <div className="server-save-status" role="status">
-          {saving ? "서버에 저장 중…" : "서버 저장 · 브라우저 간 공유"}
+          {saving
+            ? "저장 중…"
+            : globalThis.__READYBOARD_OFFLINE__
+              ? "브라우저 저장 · HTML 단독 시연"
+              : "서버 저장 · 브라우저 간 공유"}
           {saveError && (
             <button
               onClick={() => {
@@ -3860,7 +3864,7 @@ function DocumentDialog({
           )}
           <div className="file-storage-note">
             <Lock size={12} />
-            새로 제출한 원본과 상태는 서버에 보관됩니다. 초기 가상 제출본에는
+            새로 제출한 원본과 상태는 보관함에 저장됩니다. 초기 가상 제출본에는
             원본이 없습니다.
           </div>
         </div>
@@ -4103,7 +4107,7 @@ function DocumentDialog({
                   onClick={() => input.current.click()}
                 >
                   {uploading
-                    ? "서버에 저장 중…"
+                    ? "저장 중…"
                     : file
                       ? "파일 교체·재제출"
                       : edu

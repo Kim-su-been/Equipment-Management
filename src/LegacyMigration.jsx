@@ -15,7 +15,9 @@ export default function LegacyMigration({ onComplete }) {
     <div className="legacy-migration">
       <p>
         이 브라우저에 이전 인원 {old.people.length}명의 데이터가 있습니다.
-        서버로 가져오면 다른 브라우저에서도 확인할 수 있습니다.
+        {globalThis.__READYBOARD_OFFLINE__
+          ? "현재 HTML 보관함으로 가져올 수 있습니다."
+          : "서버로 가져오면 다른 브라우저에서도 확인할 수 있습니다."}
       </p>
       <button
         className="btn"

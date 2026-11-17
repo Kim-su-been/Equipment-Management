@@ -475,7 +475,7 @@ export default function OnlineDocument({
           {saved
             ? "임시 저장됨"
             : showForm
-              ? "임시 저장을 누르면 작성 내용을 서버에 보관합니다."
+              ? "임시 저장을 누르면 작성 내용을 보관합니다."
               : "제출 원본과 이전 버전을 보관합니다."}
         </span>
         <button className="btn" onClick={onClose}>

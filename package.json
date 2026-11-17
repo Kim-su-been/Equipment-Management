@@ -14,7 +14,9 @@
     "export:html": "node scripts/export-html.mjs",
     "build:forms": "node scripts/build-document-templates.mjs",
     "start": "node server/index.mjs",
-    "export:review": "node scripts/review/generate.mjs"
+    "export:review": "node scripts/review/generate.mjs",
+    "export:server-html": "node scripts/export-server-html.mjs",
+    "test:html": "node tests/review-html.mjs && node tests/offline-html.mjs"
   },
   "dependencies": {
     "ajv": "^8.20.0",

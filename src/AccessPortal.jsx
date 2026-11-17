@@ -23,7 +23,24 @@ export function ContinueRegistration({ onClose }) {
         onSubmit={(e) => {
           e.preventDefault();
           try {
-            const url = new URL(link, location.origin);
+            const url = new URL(link, location.href);
+            if (globalThis.__READYBOARD_OFFLINE__) {
+              const token = new URLSearchParams(url.hash.slice(1)).get(
+                "invite",
+              );
+              if (
+                url.origin !== location.origin ||
+                url.pathname !== location.pathname ||
+                !/^[A-Za-z0-9_-]{40,60}$/.test(token || "")
+              )
+                throw new Error(
+                  "이 HTML에서 발급한 개인 초대 링크를 입력해 주세요.",
+                );
+              location.hash = `invite=${token}`;
+              window.dispatchEvent(new Event("hashchange"));
+              onClose?.();
+              return;
+            }
             if (
               url.origin !== location.origin ||
               !/^\/invite\/[A-Za-z0-9_-]{40,60}$/.test(url.pathname)
@@ -226,7 +243,10 @@ export function InvitePortal({ token, onComplete }) {
           <h1>등록 링크를 확인해 주세요</h1>
           <p role="alert">{error}</p>
           <p>링크를 전달한 PMO 또는 수행사 담당자에게 문의해 주세요.</p>
-          <a className="btn primary" href="/">
+          <a
+            className="btn primary"
+            href={globalThis.__READYBOARD_OFFLINE__ ? "#role=pmo" : "/"}
+          >
             내 등록 이어하기 / 로그인
           </a>
         </section>

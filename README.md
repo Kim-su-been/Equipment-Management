@@ -2,7 +2,17 @@
 
 PMO가 인력계획서와 메일 요청을 확인해 명단을 관리하고, 수행사 직원이 개인 초대 링크에서 등록을 마친 뒤 계정·출입, 교육, 서류를 준비하는 웹서비스입니다. 우리금융그룹 참고 이미지의 파란 메뉴·헤더, 흰 작업 영역과 캐릭터 디자인을 유지합니다.
 
-## 실행
+## HTML 단독 시연 — 서버 실행 불필요
+
+[HTML](preview/readyboard-offline.html) 또는 [ZIP](preview/readyboard-offline.zip)을 내려받아 Chrome/Edge에서 HTML을 열면 됩니다. 상단에서 PMO·SFA 담당자·그룹웨어 담당자·수행사와 수행사 인원을 전환하세요.
+
+엑셀 불러오기, 본인 등록, 초대 링크, 작업 처리·추가, 서류 작성·제출·승인, 수료증 원본, ZIP·엑셀 다운로드, 문의·알림, 메일 검토가 이 브라우저에서 동작합니다. 명단·파일·초대·검토 이력은 IndexedDB에 저장되어 새로고침해도 남습니다. 초대 링크는 발급한 HTML과 같은 브라우저에서 여세요. 상단 **시연 백업 / 백업 불러오기**로 파일 원본까지 옮길 수 있습니다.
+
+외부 메일·AI·본인확인·Dooray 전송은 가상 시연이며 실제 외부 서비스를 호출하지 않습니다. 역할 전환은 시연을 위한 기능입니다. 전체 흐름과 검증은 [HTML 단독 시연 안내](docs/HTML-단독시연-구현.md)를 참고하세요.
+
+소스에서 다시 만들 때는 `npm ci` 후 `npm run export:html`을 실행합니다. 만들어진 HTML을 사용하는 사람은 Node.js나 서버가 필요하지 않습니다.
+
+## 서버형 서비스 실행
 
 **Node.js 22.13 이상**이 필요합니다. 이번 검증은 Node.js 24.22.1에서 진행했습니다. React 19/Vite 7, ExcelJS와 Node HTTP 서버, 내장 SQLite를 사용합니다.
 
@@ -98,8 +108,8 @@ npm run build
 
 [구현·API·검증 기록](docs/인력계획서-초대등록-구현.md), [현재 기능 요구사항](docs/PMO-인력투입관리-서비스기획안.md)에 상세 내용을 정리했습니다.
 
-**받은편지함 시연 HTML**은 `npm run export:review`로 생성합니다. [HTML](preview/readyboard-review.html) / [ZIP](preview/readyboard-review.zip). 새 메일 확인 → 5통 수집 → 초안 2건 → 검토·승인을 직접 시연합니다. 실제 서비스의 분석·준비 작업 변경 함수를 재사용하며, 합성 데이터 변경은 현재 탭에서만 유지됩니다. 새로고침하면 초기화됩니다. ZIP의 `open-preview.cmd`는 파일 열기가 제한된 Windows 환경에서 Node.js로 로컬 미리보기를 엽니다. `node tests/review-html.mjs`로 내보낸 HTML을 검증합니다. [개편 내용·검증 기록](docs/받은편지함-개편-검증.md)을 참고하세요.
+**전체 HTML 시연 내보내기**는 `npm run export:html` 또는 `npm run export:review`로 생성합니다. 기존 review/preview/tuipon HTML 경로도 같은 전체 시연으로 갱신됩니다. 검증은 `npm run test:html`입니다.
 
-서버 연결용 단일 HTML 내보내기(`npm run export:html`)는 자산을 포함하지만 **서버와 DB를 대신하지 않습니다**. 등록·명단·파일 공유는 위 실행 방법으로 서버에 접속해야 합니다.
+서버 연결용 화면 자산만 별도로 필요하면 `npm run export:server-html`을 사용합니다. 실제 DB·인증·외부 연결이 필요한 운영 서비스는 위 서버 실행 방법을 사용합니다.
 
 캐릭터는 사용자가 제공한 참고 이미지를 바탕으로 만든 발표용 자산입니다. 공식 운영 서비스나 공식 양식을 의미하지 않습니다. 출처와 폰트 정보는 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)를 참고하세요.

@@ -42,9 +42,7 @@ async function confirm(modal, count) {
   await modal
     .getByLabel("시트·헤더·열 매핑과 선택한 행을 확인했습니다.")
     .check();
-  await modal
-    .getByRole("button", { name: `${count}행 확정 · 서버 저장` })
-    .click();
+  await modal.getByRole("button", { name: `${count}행 확정 · 저장` }).click();
   await expect(modal).not.toBeVisible();
 }
 async function issue(page, name) {

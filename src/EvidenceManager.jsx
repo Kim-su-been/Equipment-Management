@@ -255,7 +255,11 @@ export default function EvidenceManager({
           원본 {available.length}개 선택 가능 ·{" "}
           {entries.length - available.length}개 가상 자료
         </label>
-        <span>서버 원본 보관</span>
+        <span>
+          {globalThis.__READYBOARD_OFFLINE__
+            ? "브라우저 원본 보관"
+            : "서버 원본 보관"}
+        </span>
       </div>
       <div className="evidence-list">
         {entries.slice(0, 100).map((r) => (
