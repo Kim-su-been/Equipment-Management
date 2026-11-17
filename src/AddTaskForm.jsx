@@ -11,6 +11,7 @@ export default function AddTaskForm({ scope, people, onClose, onSubmit }) {
     due: "",
     dependency: "",
     required: true,
+    group: "계정 준비",
     target: "all",
     personIds: [],
   });
@@ -71,6 +72,17 @@ export default function AddTaskForm({ scope, people, onClose, onSubmit }) {
             >
               {scope === "PMO" && <option value="전체">전체 프로젝트</option>}
               {(scope === "PMO" ? PROJECTS : [scope]).map((v) => (
+                <option key={v}>{v}</option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>작업 분류</span>
+            <select
+              value={form.group}
+              onChange={(e) => change("group", e.target.value)}
+            >
+              {["계정 준비", "출입 준비", "교육", "서류", "기타"].map((v) => (
                 <option key={v}>{v}</option>
               ))}
             </select>
@@ -154,7 +166,8 @@ export default function AddTaskForm({ scope, people, onClose, onSubmit }) {
           <span>
             <strong>투입 준비 필수 작업</strong>
             <small>
-              필수 작업은 준비율과 최종 투입 준비 확인에 반영됩니다.
+              계정·출입, 교육, 서류 분류의 필수 작업만 준비율과 최종 확인에
+              반영됩니다. 기타 작업은 별도로 관리합니다.
             </small>
           </span>
         </label>

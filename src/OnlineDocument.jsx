@@ -105,12 +105,37 @@ export default function OnlineDocument({
       return;
     }
     if (!showForm) return;
-    const timer = setTimeout(() => {
-      onDraft(values);
-      setSaved(true);
+    const timer = setTimeout(async () => {
+      try {
+        await onDraft(values);
+        setSaved(true);
+      } catch (e) {
+        setError(e.message);
+      }
     }, 650);
     return () => clearTimeout(timer);
   }, [values, showForm]);
+  useEffect(() => {
+    if (
+      !showForm ||
+      (values.start === person.start && values.end === person.end)
+    )
+      return;
+    setValues((previous) => ({
+      ...previous,
+      start: person.start,
+      end: person.end,
+      read: false,
+      acknowledged: false,
+      signature: "",
+    }));
+    setProof(null);
+    setRequestCode(false);
+    setSaved(false);
+    setError(
+      "투입 기간이 변경되어 미제출 서류의 기간을 갱신했습니다. 내용을 다시 확인하고 서명해 주세요.",
+    );
+  }, [person.start, person.end, showForm]);
   const submit = async () => {
     setError("");
     if (issues.length) {
@@ -450,7 +475,7 @@ export default function OnlineDocument({
           {saved
             ? "임시 저장됨"
             : showForm
-              ? "작성 내용은 이 브라우저에 임시 저장됩니다."
+              ? "임시 저장을 누르면 작성 내용을 서버에 보관합니다."
               : "제출 원본과 이전 버전을 보관합니다."}
         </span>
         <button className="btn" onClick={onClose}>
@@ -460,10 +485,14 @@ export default function OnlineDocument({
           <>
             <button
               className="btn"
-              onClick={() => {
-                onDraft(values);
-                setSaved(true);
-                onNotify("작성 내용을 임시 저장했습니다.");
+              onClick={async () => {
+                try {
+                  await onDraft(values);
+                  setSaved(true);
+                  onNotify("작성 내용을 임시 저장했습니다.");
+                } catch (e) {
+                  setError(e.message);
+                }
               }}
             >
               <Save size={15} />

@@ -4,19 +4,24 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 5173",
+    "dev": "node scripts/dev.mjs",
     "build": "vite build",
-    "preview": "vite preview --host 0.0.0.0 --port 5173",
-    "test": "node --test tests/workflow.test.js",
+    "preview": "node server/index.mjs",
+    "test": "node --test tests/*.test.js",
     "test:browser": "playwright test",
     "format": "prettier --write src tests *.js *.json index.html README.md",
-    "preview:static": "node scripts/serve-preview.mjs",
+    "preview:static": "node server/index.mjs",
     "export:html": "node scripts/export-html.mjs",
-    "build:forms": "node scripts/build-document-templates.mjs"
+    "build:forms": "node scripts/build-document-templates.mjs",
+    "start": "node server/index.mjs",
+    "export:review": "node scripts/review/generate.mjs"
   },
   "dependencies": {
+    "ajv": "^8.20.0",
     "exceljs": "^4.4.0",
+    "imapflow": "^1.7.8",
     "lucide-react": "^0.468.0",
+    "mailparser": "^3.14.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
@@ -25,5 +30,8 @@
     "@vitejs/plugin-react": "^4.5.0",
     "prettier": "^3.9.10",
     "vite": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=22.13.0"
   }
 }

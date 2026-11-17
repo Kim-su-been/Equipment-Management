@@ -62,9 +62,7 @@ import {
 import {
   TASKS,
   STATUS,
-  SEAT_IDS,
   TODAY,
-  seed,
   taskStatus as baseTaskStatus,
   progress as baseProgress,
   isPrepared as baseIsPrepared,
@@ -74,20 +72,15 @@ import {
   evidenceStatus,
 } from "./data.js";
 
-import {
-  createSeatDraft,
-  stageSeatAssignment,
-  stageSeatMove,
-  stageSeatRelease,
-  stageSeatOffboarding,
-  getSeatChanges,
-  commitSeatDraft,
-} from "./seat-workspace.js";
-
 import { createProjectTask } from "./project-tasks.js";
 import AddTaskForm from "./AddTaskForm.jsx";
 
-import SelfRegistration from "./SelfRegistration.jsx";
+import useServerState from "./useServerState.js";
+import { api } from "./api.js";
+import { ContinueRegistration } from "./AccessPortal.jsx";
+import PlanImport from "./PlanImport.jsx";
+import InvitationManager from "./InvitationManager.jsx";
+import LegacyMigration from "./LegacyMigration.jsx";
 import OnlineDocument from "./OnlineDocument.jsx";
 import { loadDocumentBackground } from "./document-templates.js";
 import TaskExportForm from "./TaskExportForm.jsx";
@@ -107,15 +100,17 @@ import {
   buildDoorayMessage,
 } from "./dooray.js";
 import BrandCharacters from "./BrandCharacters.jsx";
+import useMailInbox from "./useMailInbox.js";
+import MailReviewPage from "./MailReviewPage.jsx";
+import { reschedulePreparation } from "./personnel-workflow.js";
 
-const STORAGE = "tuip-on-demo-v1";
 const NAV = [
   ["dashboard", "전체 현황", LayoutDashboard],
   ["people", "인원 명단", Users],
   ["tasks", "준비 작업", ClipboardList],
   ["reviews", "교육·서류 검토", FileCheck2],
-  ["seats", "좌석 관리", Armchair],
   ["messages", "문의·알림", MessageSquare],
+  ["mail", "AI 메일 요청 검토", Mail],
 ];
 const MEMBER_NAV = [
   ["dashboard", "나의 투입 준비", LayoutDashboard],
@@ -123,7 +118,6 @@ const MEMBER_NAV = [
   ["tasks", "나의 작업", ClipboardList],
   ["education", "교육", GraduationCap],
   ["documents", "서류", FileText],
-  ["myseat", "내 좌석", Armchair],
   ["messages", "문의·변경 요청", MessageSquare],
 ];
 const titleMap = Object.fromEntries(
@@ -177,8 +171,8 @@ function Avatar({ person, small = false }) {
         small && "small",
       )}
     >
-      {person.id.split("-")[0] === "SFA" ? "S" : "G"}
-      <span>{person.id.split("-")[1]}</span>
+      {person.project === "SFA" ? "S" : "G"}
+      <span>{(person.displayId || "").split("-").at(-1)}</span>
     </span>
   );
 }
@@ -266,18 +260,26 @@ function Modal({
   );
 }
 
-export default function App() {
-  const [data, setData] = useState(() => {
-    try {
-      const d = JSON.parse(localStorage.getItem(STORAGE));
-      if (d?.people && d?.versions && d?.settings) return d;
-    } catch {}
-    return seed();
-  });
-  const [mode, setMode] = useState("admin"),
-    [scope, setScope] = useState("PMO"),
-    [memberId, setMemberId] = useState("SFA-3"),
-    [page, setPage] = useState("dashboard");
+export default function App({ initialState, actor, onLogout }) {
+  const {
+    data,
+    mutate,
+    refresh,
+    accept,
+    saving,
+    error: saveError,
+    clearError,
+  } = useServerState(initialState);
+  const mail = useMailInbox(actor.kind === "admin" && actor.scope === "PMO");
+  const admin = actor.kind === "admin",
+    mode = admin ? "admin" : "member";
+  const [scope, setScope] = useState(admin ? actor.scope : "PMO");
+  const [memberId, setMemberId] = useState(
+    actor.personId || initialState.people[0]?.id || "",
+  );
+  const [page, setPage] = useState("dashboard");
+  const [mailReviewKey, setMailReviewKey] = useState(0);
+  const [mailReviewIds, setMailReviewIds] = useState(null);
   const [modal, setModal] = useState(null),
     [personTab, setPersonTab] = useState("tasks"),
     [ai, setAi] = useState(false),
@@ -288,37 +290,35 @@ export default function App() {
     [projectFilter, setProjectFilter] = useState("전체 프로젝트"),
     [statusFilter, setStatusFilter] = useState("전체 상태"),
     [taskOwner, setTaskOwner] = useState("전체 작업"),
-    [reviewTab, setReviewTab] = useState("전체"),
-    [seatVersion, setSeatVersion] = useState(null),
-    [seatZone, setSeatZone] = useState("전체 구역"),
-    [seatDate, setSeatDate] = useState(TODAY);
+    [reviewTab, setReviewTab] = useState("전체");
   const [chat, setChat] = useState([]),
     [chatInput, setChatInput] = useState("");
-  const [seatDrafts, setSeatDrafts] = useState({});
-  const activeSeatDraft = mode === "admin" ? seatDrafts[scope] || null : null;
-  const editableSeats = activeSeatDraft?.seats || data.seats;
-  const pendingSeatChanges = getSeatChanges(activeSeatDraft);
-  const hasSeatEdits =
-    pendingSeatChanges.length > 0 ||
-    (activeSeatDraft?.offboarding.length || 0) > 0;
-  const [dragSeat, setDragSeat] = useState(null);
-  const [dropSeat, setDropSeat] = useState(null);
-  const seatDrag = useRef(null);
-  const suppressSeatClick = useRef(0);
   const toastTimer = useRef(),
     urls = useRef({});
-  const admin = mode === "admin",
-    member = data.people.find((p) => p.id === memberId) || data.people[0];
+  const member = data.people.find((p) => p.id === memberId) ||
+    data.people[0] || {
+      id: "",
+      name: "",
+      project: "SFA",
+      tasks: {},
+      files: {},
+      certChecks: {},
+      notes: {},
+      history: [],
+      company: "",
+      start: "",
+      end: "",
+    };
   const scoped = data.people.filter((p) =>
     admin ? scope === "PMO" || p.project === scope : p.id === member.id,
   );
   const personTasks = (person) =>
     tasksForPerson(person, data.customTasks || []);
-  const taskStatus = (person, id, seats = data.seats) =>
+  const taskStatus = (person, id, seats = undefined) =>
     baseTaskStatus(person, id, seats, data.customTasks || []);
-  const progress = (person, seats = data.seats) =>
+  const progress = (person, seats = undefined) =>
     baseProgress(person, seats, data.customTasks || []);
-  const isPrepared = (person, seats = data.seats) =>
+  const isPrepared = (person, seats = undefined) =>
     baseIsPrepared(person, seats, data.customTasks || []);
   const taskLabel = (id) =>
     [...TASKS, ...(data.customTasks || [])].find((t) => t.id === id)?.title ||
@@ -329,36 +329,17 @@ export default function App() {
     toastTimer.current = setTimeout(() => setToast(""), 4200);
   };
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE, JSON.stringify(data));
-    } catch {
-      notify("저장 공간이 부족합니다. 이 탭에서 변경 사항을 유지합니다.");
-    }
-  }, [data]);
-  useEffect(() => {
-    const sync = (e) => {
-      if (e.key === STORAGE && e.newValue) {
-        try {
-          setData(JSON.parse(e.newValue));
-        } catch {}
-      }
-    };
-    window.addEventListener("storage", sync);
-    return () => window.removeEventListener("storage", sync);
-  }, []);
+    if (saveError) notify(saveError);
+  }, [saveError]);
   useEffect(() => {
     document.body.style.overflow = modal || mobile ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
   }, [modal, mobile]);
-  const mutate = (fn) =>
-    setData((d) => {
-      const next = structuredClone(d);
-      fn(next);
-      return next;
-    });
-  const go = (id) => {
+  const go = (id, reviewIds = null) => {
+    if (id === "mail") setMailReviewIds(reviewIds);
+    if (id === "mail") setMailReviewKey((v) => v + 1);
     setPage(id);
     setSearch("");
     setStatusFilter("전체 상태");
@@ -392,21 +373,26 @@ export default function App() {
   const canEdit = (p) => admin && canManage(scope, p);
   const countStatus = (p, statuses) =>
     personTasks(p).filter(
-      (t) => statuses.includes(taskStatus(p, t.id, data.seats)) && !t.derived,
+      (t) => statuses.includes(taskStatus(p, t.id, undefined)) && !t.derived,
     ).length;
   const pending = scoped
     .flatMap((p) =>
       ["O08", "O09", "O10", "O11"].map((id) => ({
         person: p,
         task: TASKS.find((t) => t.id === id),
-        status: evidenceStatus(p, id, data.seats),
+        status: evidenceStatus(p, id, undefined),
       })),
     )
     .filter((r) => ["review", "ai", "fix", "error"].includes(r.status));
   const reviewCount = pending.filter((r) =>
     ["review", "error"].includes(r.status),
   ).length;
-  const nav = admin ? NAV : MEMBER_NAV;
+  useEffect(() => {
+    if (mail.alertIds.length && !modal) setModal({ type: "mailAlert" });
+  }, [mail.alertIds.join(","), modal]);
+  const nav = admin
+    ? NAV.filter((item) => item[0] !== "mail" || actor.scope === "PMO")
+    : MEMBER_NAV;
   const screenTitle = admin
     ? {
         dashboard: "전체 현황",
@@ -414,9 +400,6 @@ export default function App() {
         settings: "운영 기준",
       }[page] || titleMap[page]
     : titleMap[page];
-  const currentSeat = Object.entries(data.seats).find(
-    ([, v]) => v?.personId === member.id,
-  );
   function openPerson(p) {
     if (!scoped.some((x) => x.id === p.id))
       return notify("해당 인원 상세에 접근할 수 없습니다.");
@@ -431,7 +414,7 @@ export default function App() {
       (task.owner === "member" && (admin || member.id !== p.id))
     )
       return notify("해당 작업의 수행 주체로 전환해 주세요.");
-    const current = taskStatus(p, id, data.seats);
+    const current = taskStatus(p, id, undefined);
     if (!["ready", "progress"].includes(current))
       return notify("선행 작업을 먼저 완료해 주세요.");
     const confirmationDate = p.selfRegistered ? todayLocal() : TODAY;
@@ -449,7 +432,7 @@ export default function App() {
       });
       audit(
         d,
-        `${p.id} · ${task.title} 완료`,
+        `${p.name} · ${task.title} 완료`,
         `${task.owner === "admin" ? "주관사" : "수행사"} 처리`,
       );
       addNotice(
@@ -465,7 +448,7 @@ export default function App() {
     if (!file) return;
     if (admin || p.id !== member.id)
       return notify("수행사 본인 화면에서 제출해 주세요.");
-    if (!["ready", "fix", "done"].includes(taskStatus(p, id, data.seats)))
+    if (!["ready", "fix", "done"].includes(taskStatus(p, id, undefined)))
       return notify("선행 작업을 먼저 확인해 주세요.");
     if (!/\.(pdf|png|jpe?g)$/i.test(file.name) || file.size > 10 * 1024 * 1024)
       return notify("10MB 이하의 PDF, PNG, JPG 파일을 선택해 주세요.");
@@ -482,7 +465,7 @@ export default function App() {
     const key = `${p.id}-${id}`;
     if (urls.current[key]) URL.revokeObjectURL(urls.current[key]);
     urls.current[key] = URL.createObjectURL(file);
-    mutate((d) => {
+    await mutate((d) => {
       const person = d.people.find((x) => x.id === p.id);
       person.files[id] = {
         name: file.name,
@@ -510,7 +493,7 @@ export default function App() {
       });
       audit(
         d,
-        `${p.id} · ${taskLabel(id)} 제출`,
+        `${p.name} · ${taskLabel(id)} 제출`,
         id === "O08" || id === "O09"
           ? "수료증 등록 · 교육 완료"
           : "AI 검토 대기 · 시연 결과 확인 가능",
@@ -559,7 +542,7 @@ export default function App() {
       storageId: stored.id,
       digest: stored.digest,
     };
-    mutate((d) => {
+    await mutate((d) => {
       const person = d.people.find((person) => person.id === p.id);
       person.submissions ||= {};
       person.submissions[task.id] = [
@@ -597,7 +580,7 @@ export default function App() {
       });
       audit(
         d,
-        `${p.id} · ${task.title} 확인 요청`,
+        `${p.name} · ${task.title} 확인 요청`,
         `온라인 제출 v${submission.version} · 실제 인증/AI 미연동`,
         "document",
       );
@@ -616,7 +599,7 @@ export default function App() {
     try {
       const record = await readEvidence(id);
       if (!record)
-        return notify("현재 브라우저에 원본이 없습니다. 다시 제출해 주세요.");
+        return notify("서버에 보관된 원본이 없습니다. 다시 제출해 주세요.");
       const owner = data.people.find((p) => p.id === record.personId);
       if (!owner || (admin ? !canEdit(owner) : member.id !== owner.id))
         return notify("원본에 접근할 수 없습니다.");
@@ -639,14 +622,14 @@ export default function App() {
           : "필수 항목이 확인되었습니다. 최종 확인은 담당자가 수행합니다.";
       audit(
         d,
-        `${p.id} · 서류 확인 요청`,
+        `${p.name} · 서류 확인 요청`,
         "시연용 AI 결과 · 실제 AI 분석 미연동",
         "document",
       );
       addNotice(
         d,
         p,
-        `${p.id}님의 ${taskLabel(id)} 확인 요청`,
+        `${p.name}님의 ${taskLabel(id)} 확인 요청`,
         "시연용 AI 사전 검토 결과가 준비되었습니다.",
       );
     });
@@ -655,7 +638,7 @@ export default function App() {
   function review(p, id, result, note) {
     if (!canEdit(p))
       return notify("해당 프로젝트 담당자만 검토할 수 있습니다.");
-    if (!["review", "error"].includes(evidenceStatus(p, id, data.seats)))
+    if (!["review", "error"].includes(evidenceStatus(p, id, undefined)))
       return notify("확인 요청 상태의 문서만 처리할 수 있습니다.");
     if (result === "fix" && !note.trim())
       return notify("보완이 필요한 이유를 입력해 주세요.");
@@ -673,7 +656,7 @@ export default function App() {
       });
       audit(
         d,
-        `${p.id} · ${taskLabel(id)} ${result === "done" ? "승인" : "보완 요청"}`,
+        `${p.name} · ${taskLabel(id)} ${result === "done" ? "승인" : "보완 요청"}`,
         note || "담당자 원문 확인 완료",
         "document",
       );
@@ -697,19 +680,17 @@ export default function App() {
     if (/서명|작성|서류/.test(q))
       answer =
         "보안서약서는 성명, 소속, 프로젝트, 작성일을 채운 후 마지막 서명란에 본인이 서명합니다. 개인정보 동의서는 수집 목적·보유기간을 먼저 확인해 주세요. 제출 후 AI 사전 검토 화면을 거쳐 담당자에게 확인 요청이 전달됩니다.\n근거: 시연용 서류 작성 가이드 v1 · 실제 AI 미연동";
-    else if (/좌석/.test(q))
-      answer = `현재 공용 배치도는 v${data.versions.at(-1).version}입니다. ${Object.values(data.seats).filter(Boolean).length}석이 배정되어 있습니다. 주관사 담당자는 본인 프로젝트 인원만 배정할 수 있으며, 수행사는 본인 배정 결과만 확인합니다.\n근거: 현재 시연 좌석 원장`;
     else if (/교육|수료/.test(q))
       answer =
         "교육 사이트에서 수강한 뒤 발급받은 수료증을 이곳에 등록해 주세요. 링크를 여는 것만으로는 완료되지 않습니다. 파일이 등록되면 교육은 완료로 표시되며, 증빙 검증 상태는 별도로 관리합니다.\n근거: 교육 처리 기준 v1";
     else {
-      const list = scoped.filter((p) => !isPrepared(p, data.seats));
-      answer = `현재 조회 범위 ${admin ? scope : member.id}에서 준비 미완료 인원은 ${list.length}명입니다. ${list
+      const list = scoped.filter((p) => !isPrepared(p, undefined));
+      answer = `현재 조회 범위 ${admin ? scope : member.name}에서 준비 미완료 인원은 ${list.length}명입니다. ${list
         .slice(0, 4)
-        .map((p) => `${p.id}(${progress(p, data.seats)}%)`)
+        .map((p) => `${p.id}(${progress(p, undefined)}%)`)
         .join(
           ", ",
-        )}${list.length > 4 ? " 등이 있습니다." : "입니다."}\n계정 발급 대기, 서류 확인 요청, 좌석 미배정 순으로 확인해 보세요. 이 답변은 시연 데이터에서 생성한 고정 규칙 안내입니다.\n근거: 현재 명단·작업 현황 · 기준일 2026.11.09`;
+        )}${list.length > 4 ? " 등이 있습니다." : "입니다."}\n계정 발급 대기, 서류 확인 요청, 출입 준비 대기 순으로 확인해 보세요. 이 답변은 시연 데이터에서 생성한 고정 규칙 안내입니다.\n근거: 현재 명단·작업 현황 · 기준일 2026.11.09`;
     }
     setChat((c) => [
       ...c,
@@ -770,20 +751,24 @@ export default function App() {
       (p) =>
         (projectFilter === "전체 프로젝트" || p.project === projectFilter) &&
         (!search ||
-          [p.id, p.name, p.company, p.email, p.role]
+          [p.id, p.displayId, p.name, p.company, p.email, p.role]
             .join(" ")
             .toLowerCase()
             .includes(search.toLowerCase())) &&
         (statusFilter === "전체 상태" ||
-          (statusFilter === "준비 미완료"
-            ? !isPrepared(p, data.seats)
-            : statusFilter === "준비 충족"
-              ? isPrepared(p, data.seats)
-              : statusFilter === p.lifecycle)),
+          (statusFilter === "본인 등록 대기"
+            ? p.registrationStatus === "pending_registration"
+            : statusFilter === "등록 완료"
+              ? p.registrationStatus === "registered"
+              : statusFilter === "준비 미완료"
+                ? !isPrepared(p, undefined)
+                : statusFilter === "준비 충족"
+                  ? isPrepared(p, undefined)
+                  : statusFilter === p.lifecycle)),
     );
   }
   function actionFor(p, t, compact = false) {
-    const status = taskStatus(p, t.id, data.seats),
+    const status = taskStatus(p, t.id, undefined),
       own = admin
         ? t.owner === "admin" && canEdit(p)
         : t.owner === "member" && p.id === member.id;
@@ -803,25 +788,11 @@ export default function App() {
           <ChevronRight size={14} />
         </button>
       );
-    if (t.kind === "seat")
-      return admin ? (
-        <button
-          className="text-link"
-          onClick={() => {
-            go("seats");
-            if (status !== "done")
-              setModal({
-                type: "assign",
-                personId: p.id,
-                base: data.versions.at(-1).version,
-              });
-          }}
-        >
-          좌석 {status === "done" ? "보기" : "배정"}
-          <ChevronRight size={14} />
-        </button>
-      ) : (
-        <span className="muted">주관사 처리</span>
+    if (["on_hold", "cancelled"].includes(status))
+      return (
+        <span className="muted">
+          {status === "on_hold" ? "보류 중" : "요청 취소"}
+        </span>
       );
     if (t.derived)
       return admin ? (
@@ -869,7 +840,7 @@ export default function App() {
               <th>투입 기간</th>
               <th>준비율</th>
               {!simple && <th>교육 / 서류</th>}
-              <th>투입 상태</th>
+              <th>등록 / 투입 상태</th>
               <th />
             </tr>
           </thead>
@@ -887,7 +858,9 @@ export default function App() {
                     <div>
                       <strong>{p.name}</strong>
                       {p.name !== p.id && (
-                        <span className="person-identifier">{p.id}</span>
+                        <span className="person-identifier">
+                          {p.displayId || p.id}
+                        </span>
                       )}
                       <span>
                         {[p.company, p.role].filter(Boolean).join(" · ")}
@@ -913,7 +886,7 @@ export default function App() {
                   </span>
                 </td>
                 <td>
-                  <Progress value={progress(p, data.seats)} />
+                  <Progress value={progress(p, undefined)} />
                 </td>
                 {!simple && (
                   <td>
@@ -922,7 +895,7 @@ export default function App() {
                         <GraduationCap size={14} />
                         {
                           ["O08", "O09"].filter(
-                            (id) => taskStatus(p, id, data.seats) === "done",
+                            (id) => taskStatus(p, id, undefined) === "done",
                           ).length
                         }
                         /2
@@ -931,7 +904,7 @@ export default function App() {
                         <FileText size={14} />
                         {
                           ["O10", "O11"].filter(
-                            (id) => taskStatus(p, id, data.seats) === "done",
+                            (id) => taskStatus(p, id, undefined) === "done",
                           ).length
                         }
                         /2
@@ -940,6 +913,17 @@ export default function App() {
                   </td>
                 )}
                 <td>
+                  <span
+                    className={
+                      p.registrationStatus === "pending_registration"
+                        ? "registration-pending"
+                        : "registration-done"
+                    }
+                  >
+                    {p.registrationStatus === "pending_registration"
+                      ? "본인 등록 대기"
+                      : "등록 완료"}
+                  </span>
                   <Badge
                     tone={
                       p.lifecycle === "투입 중"
@@ -984,7 +968,7 @@ export default function App() {
     return (
       <div className="task-list">
         {list.map((t) => {
-          const status = taskStatus(person, t.id, data.seats);
+          const status = taskStatus(person, t.id, undefined);
           return (
             <div
               className={cx("task-row", status === "done" && "completed")}
@@ -1015,7 +999,7 @@ export default function App() {
                         : []),
                     ]
                       .filter(
-                        (d) => taskStatus(person, d, data.seats) !== "done",
+                        (d) => taskStatus(person, d, undefined) !== "done",
                       )
                       .map(taskLabel)
                       .join(", ")}`}
@@ -1041,7 +1025,7 @@ export default function App() {
     );
   }
   function Stats() {
-    const ready = scoped.filter((p) => isPrepared(p, data.seats)).length;
+    const ready = scoped.filter((p) => isPrepared(p, undefined)).length;
     const cards = [
       {
         label: "전체 투입 인원",
@@ -1111,7 +1095,7 @@ export default function App() {
     );
   }
   function Dashboard() {
-    const needs = scoped.filter((p) => !isPrepared(p, data.seats)).slice(0, 4);
+    const needs = scoped.filter((p) => !isPrepared(p, undefined)).slice(0, 4);
     return (
       <>
         <section className="page-heading dashboard-welcome">
@@ -1122,17 +1106,23 @@ export default function App() {
               한눈에 보는 투입 현황
               <span className="heading-dot" />
             </h1>
-            <p>새로운 시작의 모든 준비를, 레디보드과 차근차근 연결해 보세요.</p>
+            <p>새로운 시작의 모든 준비를, 레디보드와 차근차근 연결해 보세요.</p>
           </div>
           <div className="welcome-visual">
             <BrandCharacters label="함께 프로젝트의 시작을 준비하는 캐릭터들" />
           </div>
           <Btn
-            icon={Plus}
+            icon={actor.scope === "PMO" ? Upload : Plus}
             variant="primary"
-            onClick={() => setModal({ type: "register" })}
+            onClick={() =>
+              setModal(
+                actor.scope === "PMO"
+                  ? { type: "planImport" }
+                  : { type: "register", requestId: crypto.randomUUID() },
+              )
+            }
           >
-            인원 등록
+            {actor.scope === "PMO" ? "인력계획서 불러오기" : "인원 등록"}
           </Btn>
           <div className="brand-one-motif" aria-hidden="true">
             <i />
@@ -1142,8 +1132,16 @@ export default function App() {
         <div className="date-strip">
           <div>
             <CalendarDays size={15} />
-            <strong>2026년 11월 9일 월요일</strong>
-            <span className="muted">시연 기준일</span>
+            <strong>
+              {new Date().toLocaleDateString("ko-KR", {
+                timeZone: "Asia/Seoul",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                weekday: "long",
+              })}
+            </strong>
+            <span className="muted">현황 기준일</span>
           </div>
           <span className="live">
             <i /> 모든 프로젝트 현황을 확인하고 있어요
@@ -1166,7 +1164,7 @@ export default function App() {
                 (project, i) => {
                   const ps = scoped.filter((p) => p.project === project);
                   const avg = Math.round(
-                    ps.reduce((v, p) => v + progress(p, data.seats), 0) /
+                    ps.reduce((v, p) => v + progress(p, undefined), 0) /
                       (ps.length || 1),
                   );
                   return (
@@ -1213,7 +1211,7 @@ export default function App() {
             </div>
             <div className="project-foot">
               <ShieldCheck size={16} />
-              <span>계정 · 교육 · 서류 · 좌석 준비 상태를 함께 확인해요.</span>
+              <span>계정 · 출입 · 교육 · 서류 준비 상태를 함께 확인해요.</span>
             </div>
           </section>
           <section className="card needs-card">
@@ -1252,15 +1250,15 @@ export default function App() {
                     <p>
                       {["O10", "O11"].some((id) =>
                         ["review", "error"].includes(
-                          taskStatus(p, id, data.seats),
+                          taskStatus(p, id, undefined),
                         ),
                       )
                         ? "서류 확인 요청을 확인해 주세요"
                         : Object.values(p.tasks).includes("ai")
                           ? "제출한 서류의 AI 검토가 진행 중이에요"
-                          : taskStatus(p, "O06", data.seats) === "waiting"
+                          : taskStatus(p, "O06", undefined) === "waiting"
                             ? "주관사 계정 준비를 기다리고 있어요"
-                            : "교육·서류·좌석 준비를 진행해 주세요"}
+                            : "계정·출입·교육·서류 준비를 진행해 주세요"}
                     </p>
                   </div>
                   <ChevronRight size={15} />
@@ -1332,16 +1330,10 @@ export default function App() {
                     <span
                       className={cx(
                         "activity-icon",
-                        a.type === "seat"
-                          ? "blue"
-                          : a.type === "document"
-                            ? "purple"
-                            : "green",
+                        a.type === "document" ? "purple" : "green",
                       )}
                     >
-                      {a.type === "seat" ? (
-                        <Armchair size={15} />
-                      ) : a.type === "document" ? (
+                      {a.type === "document" ? (
                         <FileText size={15} />
                       ) : (
                         <Users size={15} />
@@ -1377,10 +1369,28 @@ export default function App() {
               <Btn icon={Download} onClick={() => workbook("export")}>
                 엑셀 내보내기
               </Btn>
+              {actor.scope === "PMO" && (
+                <>
+                  <Btn
+                    icon={Upload}
+                    variant="primary"
+                    onClick={() => setModal({ type: "planImport" })}
+                  >
+                    인력계획서 불러오기
+                  </Btn>
+                  <Btn
+                    icon={Link2}
+                    onClick={() => setModal({ type: "invitations" })}
+                  >
+                    개인별 초대 링크
+                  </Btn>
+                </>
+              )}
               <Btn
                 icon={Plus}
-                variant="primary"
-                onClick={() => setModal({ type: "register" })}
+                onClick={() =>
+                  setModal({ type: "register", requestId: crypto.randomUUID() })
+                }
               >
                 인원 등록
               </Btn>
@@ -1432,8 +1442,11 @@ export default function App() {
               >
                 {[
                   "전체 상태",
+                  "본인 등록 대기",
+                  "등록 완료",
                   "투입 중",
                   "투입 예정",
+                  "투입 보류",
                   "준비 충족",
                   "준비 미완료",
                   "철수 완료",
@@ -1522,7 +1535,9 @@ export default function App() {
           .filter(
             (p) =>
               !search ||
-              p.id.toLowerCase().includes(search.toLowerCase()) ||
+              `${p.name} ${p.displayId} ${p.company}`
+                .toLowerCase()
+                .includes(search.toLowerCase()) ||
               personTasks(p).some((t) => t.title.includes(search)),
           )
           .map((p) => (
@@ -1532,7 +1547,9 @@ export default function App() {
                   <Avatar person={p} small />
                   <div>
                     <h2>
-                      {p.name !== p.id ? `${p.name} · ${p.id}` : p.id}{" "}
+                      {p.name !== p.id
+                        ? `${p.name} · ${p.displayId || ""}`
+                        : p.id}{" "}
                       <span className="subtle-tag">{p.project}</span>
                     </h2>
                     <p>
@@ -1541,7 +1558,7 @@ export default function App() {
                     </p>
                   </div>
                 </div>
-                <Progress value={progress(p, data.seats)} />
+                <Progress value={progress(p, undefined)} />
               </div>
               <TaskRows person={p} filter={taskOwner} />
             </section>
@@ -1553,7 +1570,7 @@ export default function App() {
     const entries = scoped.flatMap((p) =>
       ["O10", "O11", "O08", "O09"]
         .filter((id) => p.files[id])
-        .map((id) => ({ p, id, status: evidenceStatus(p, id, data.seats) })),
+        .map((id) => ({ p, id, status: evidenceStatus(p, id, undefined) })),
     );
     const rows = entries.filter(
       (r) =>
@@ -1688,7 +1705,7 @@ export default function App() {
                     <td>
                       <strong>{p.name || p.id}</strong>
                       <p className="cell-sub">
-                        {p.id} · {p.project}
+                        {p.displayId} · {p.project}
                       </p>
                     </td>
                     <td className="date-text">{fmt(p.files[id].date)}</td>
@@ -1748,506 +1765,6 @@ export default function App() {
       </>
     );
   }
-  function stageSeatEdit(edit) {
-    try {
-      const next = edit(activeSeatDraft || createSeatDraft(data, scope));
-      setSeatDrafts((all) => ({
-        ...all,
-        [scope]:
-          getSeatChanges(next).length || next.offboarding.length ? next : null,
-      }));
-      return true;
-    } catch (error) {
-      notify(error.message);
-      return false;
-    }
-  }
-  function saveSeatChanges() {
-    if (!activeSeatDraft || !hasSeatEdits) return;
-    let current = data;
-    try {
-      const stored = JSON.parse(localStorage.getItem(STORAGE));
-      if (stored?.versions) current = stored;
-    } catch {}
-    try {
-      const next = commitSeatDraft(current, activeSeatDraft, scope);
-      audit(
-        next,
-        `좌석 변경 ${pendingSeatChanges.length}건 저장`,
-        `공용 배치도 v${next.versions.at(-1).version}`,
-        "seat",
-      );
-      localStorage.setItem(STORAGE, JSON.stringify(next));
-      setData(next);
-      setSeatDrafts((all) => ({ ...all, [scope]: null }));
-      setSeatVersion(null);
-      notify(
-        `저장 완료 · ${pendingSeatChanges.length}건의 변경을 v${next.versions.at(-1).version}에 기록했습니다.`,
-      );
-    } catch (error) {
-      setData(current);
-      notify(error.message);
-    }
-  }
-  useEffect(() => {
-    const hasPending = Object.values(seatDrafts).some(
-      (d) => d && (getSeatChanges(d).length || d.offboarding.length),
-    );
-    if (!hasPending) return;
-    const warn = (event) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [seatDrafts]);
-  function beginSeatDrag(event, id) {
-    const assignment = editableSeats[id];
-    const person = data.people.find((p) => p.id === assignment?.personId);
-    const historical =
-      seatVersion !== null && seatVersion !== data.versions.at(-1).version;
-    if (
-      !admin ||
-      historical ||
-      !person ||
-      !canEdit(person) ||
-      person.lifecycle === "철수 완료"
-    ) {
-      event.preventDefault();
-      return;
-    }
-    seatDrag.current = {
-      fromSeatId: id,
-      personId: person.id,
-      scope,
-      baseVersion: data.versions.at(-1).version,
-    };
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("application/x-tuipon-seat", id);
-    setDragSeat(id);
-  }
-  function endSeatDrag() {
-    seatDrag.current = null;
-    setDragSeat(null);
-    setDropSeat(null);
-    suppressSeatClick.current = Date.now() + 250;
-  }
-  function dropSeatAssignment(event, toSeatId) {
-    event.preventDefault();
-    const drag = seatDrag.current;
-    if (!drag) return;
-    const historical =
-      seatVersion !== null && seatVersion !== data.versions.at(-1).version;
-    if (!admin || historical || scope !== drag.scope) {
-      endSeatDrag();
-      return notify("현재 역할 또는 과거 버전에서는 이동할 수 없습니다.");
-    }
-    const changed = stageSeatEdit((draft) =>
-      stageSeatMove(data, draft, { ...drag, toSeatId }),
-    );
-    if (changed && drag.fromSeatId !== toSeatId)
-      notify(
-        `${drag.personId} · ${drag.fromSeatId} → ${toSeatId} 임시 이동. 저장 버튼으로 확정하세요.`,
-      );
-    endSeatDrag();
-  }
-
-  function Seats() {
-    const version =
-        data.versions.find((v) => v.version === seatVersion) ||
-        data.versions.at(-1),
-      historical =
-        seatVersion !== null && seatVersion !== data.versions.at(-1).version;
-    const seats = historical ? version.seats : editableSeats;
-    const zones = seatZone === "전체 구역" ? ["A", "B"] : [seatZone[0]];
-    const occupied = Object.values(seats).filter(
-      (v) => v && v.start <= seatDate && v.end >= seatDate,
-    ).length;
-    const reserved = Object.values(seats).filter(
-      (v) => v && v.start > seatDate,
-    ).length;
-    return (
-      <>
-        <PageHeading
-          title="좌석 관리"
-          desc="하나의 배치도에서, 모든 프로젝트의 업무 공간을 함께 관리하세요."
-          actions={
-            <>
-              {hasSeatEdits && (
-                <Btn
-                  icon={Undo2}
-                  onClick={() => setModal({ type: "discardSeat" })}
-                >
-                  변경 취소
-                </Btn>
-              )}
-              <Btn
-                icon={Plus}
-                disabled={historical}
-                onClick={() =>
-                  setModal({
-                    type: "assign",
-                    base:
-                      activeSeatDraft?.baseVersion ||
-                      data.versions.at(-1).version,
-                  })
-                }
-              >
-                좌석 배정
-              </Btn>
-              <Btn
-                icon={Save}
-                variant="primary"
-                disabled={historical || !hasSeatEdits}
-                onClick={saveSeatChanges}
-              >
-                변경 저장
-                {hasSeatEdits ? ` · ${pendingSeatChanges.length}건` : ""}
-              </Btn>
-            </>
-          }
-        />
-        <div className="seat-status-bar">
-          <div className="seat-stats">
-            <span>
-              전체 <strong>12석</strong>
-            </span>
-            <i />
-            <span>
-              <b className="dot green" />
-              사용 중 <strong>{occupied}</strong>
-            </span>
-            <span>
-              <b className="dot purple" />
-              예약 <strong>{reserved}</strong>
-            </span>
-            <span>
-              <b className="dot hollow" />
-              미배정 <strong>{12 - occupied - reserved}</strong>
-            </span>
-          </div>
-          <span className="live">
-            <i />
-            {historical
-              ? `과거 버전 v${version.version} · 읽기 전용`
-              : `최신 v${data.versions.at(-1).version}`}
-          </span>
-        </div>
-        {hasSeatEdits && (
-          <div
-            className={cx(
-              "seat-draft-banner",
-              activeSeatDraft.baseVersion !== data.versions.at(-1).version &&
-                "conflict",
-            )}
-          >
-            <span className="draft-banner-icon">
-              <Layers size={20} />
-            </span>
-            <div>
-              <strong>
-                {activeSeatDraft.baseVersion !== data.versions.at(-1).version
-                  ? "다른 관리자가 새 버전을 저장했습니다"
-                  : `${pendingSeatChanges.length}건의 변경사항이 아직 저장되지 않았어요`}
-              </strong>
-              <p>
-                {activeSeatDraft.baseVersion !== data.versions.at(-1).version
-                  ? "임시 편집은 유지됩니다. 내용을 확인한 뒤 변경을 취소하고 최신 배치도에서 다시 적용해 주세요."
-                  : `v${activeSeatDraft.baseVersion} 기준 임시 편집 · 저장하면 한 번에 새 버전으로 기록됩니다. 다른 관리자에게는 저장 전 배치도가 표시됩니다.`}
-              </p>
-            </div>
-            <button
-              className="text-link"
-              onClick={() => setModal({ type: "seatChanges" })}
-            >
-              변경 내역
-              <ChevronRight size={14} />
-            </button>
-          </div>
-        )}
-        <div className="seat-layout">
-          <section className="card floor-card">
-            <div className="floor-toolbar">
-              <div className="floor-title">
-                <Building2 size={18} />
-                <strong>가상 업무공간 · 1층</strong>
-                <Badge tone={historical ? "orange" : "green"}>
-                  {historical ? "과거 기록" : "공용 배치도"}
-                </Badge>
-              </div>
-              <div>
-                <select
-                  aria-label="좌석 구역"
-                  value={seatZone}
-                  onChange={(e) => setSeatZone(e.target.value)}
-                >
-                  <option>전체 구역</option>
-                  <option>A 구역</option>
-                  <option>B 구역</option>
-                </select>
-                <input
-                  aria-label="좌석 조회일"
-                  type="date"
-                  value={seatDate}
-                  onChange={(e) => setSeatDate(e.target.value)}
-                />
-              </div>
-            </div>
-            {historical && (
-              <div className="historical-banner">
-                <History size={16} />v{version.version}의 배치도입니다. 변경할
-                수 없습니다.
-                <button onClick={() => setSeatVersion(null)}>
-                  최신 버전으로 돌아가기
-                  <ArrowRight size={13} />
-                </button>
-              </div>
-            )}
-            {!historical && (
-              <div className="drag-instruction">
-                <span className="drag-instruction-icon">
-                  <MousePointer2 size={18} />
-                </span>
-                <div>
-                  <strong>인원을 드래그해 빈 좌석으로 옮겨보세요</strong>
-                  <p>
-                    원하는 만큼 편집한 뒤 변경 저장을 누르세요. 저장할 때만 새
-                    버전이 생성됩니다. 클릭으로도 배정을 변경할 수 있어요.
-                  </p>
-                </div>
-                <span className="drag-shortcut">
-                  <GripVertical size={14} /> DRAG & DROP
-                </span>
-              </div>
-            )}
-            <div className={cx("floor-map", dragSeat && "drag-active")}>
-              <div className="office-top">
-                <span>MEETING ROOM</span>
-                <span>LOUNGE & PANTRY</span>
-                <span>
-                  <ArrowRight size={13} /> 출입구
-                </span>
-              </div>
-              <div className="office-label">
-                <span />
-                WORKSPACE · 1F
-                <span />
-              </div>
-              <div className="zones">
-                {zones.map((zone) => (
-                  <div className="seat-zone" key={zone}>
-                    <div className="zone-label">
-                      <span>{zone} ZONE</span>
-                      <p>
-                        {zone === "A" ? "집중 업무 공간" : "협업 업무 공간"}
-                      </p>
-                    </div>
-                    <div className="seat-grid">
-                      {SEAT_IDS.filter((id) => id.startsWith(zone)).map(
-                        (id) => {
-                          const assignment = seats[id],
-                            p = data.people.find(
-                              (p) => p.id === assignment?.personId,
-                            );
-                          const active =
-                            assignment &&
-                            assignment.start <= seatDate &&
-                            assignment.end >= seatDate;
-                          const future =
-                            assignment && assignment.start > seatDate;
-                          return (
-                            <button
-                              key={id}
-                              className={cx(
-                                "desk",
-                                dragSeat === id && "dragging",
-                                dropSeat === id && !assignment && "drop-target",
-                                dropSeat === id &&
-                                  assignment &&
-                                  dragSeat !== id &&
-                                  "drop-blocked",
-                                p && (p.project === "SFA" ? "sfa" : "gw"),
-                                future && "reserved",
-                                !active && !future && "available",
-                              )}
-                              aria-label={`${id} ${p?.id || "미배정"}`}
-                              draggable={Boolean(
-                                !historical &&
-                                p &&
-                                canEdit(p) &&
-                                p.lifecycle !== "철수 완료",
-                              )}
-                              title={
-                                !historical && p && canEdit(p)
-                                  ? `${p.id}을 빈 좌석으로 드래그하거나 클릭해 변경`
-                                  : historical
-                                    ? "과거 버전 · 읽기 전용"
-                                    : p
-                                      ? "배정 정보 보기"
-                                      : "빈 좌석 · 인원을 끌어 놓으세요"
-                              }
-                              onDragStart={(e) => beginSeatDrag(e, id)}
-                              onDragEnd={endSeatDrag}
-                              onDragOver={(e) => {
-                                if (!seatDrag.current || historical) return;
-                                e.preventDefault();
-                                e.dataTransfer.dropEffect =
-                                  !assignment || id === dragSeat
-                                    ? "move"
-                                    : "none";
-                                if (dropSeat !== id) setDropSeat(id);
-                              }}
-                              onDragLeave={(e) => {
-                                if (!e.currentTarget.contains(e.relatedTarget))
-                                  setDropSeat(null);
-                              }}
-                              onDrop={(e) => dropSeatAssignment(e, id)}
-                              onClick={() => {
-                                if (Date.now() < suppressSeatClick.current)
-                                  return;
-                                setModal({
-                                  type: "seatInfo",
-                                  seat: id,
-                                  version: historical ? version.version : null,
-                                });
-                              }}
-                            >
-                              <span className="desk-top">
-                                <Monitor size={18} />
-                                {!historical &&
-                                  p &&
-                                  canEdit(p) &&
-                                  p.lifecycle !== "철수 완료" && (
-                                    <GripVertical
-                                      size={13}
-                                      className="desk-grip"
-                                    />
-                                  )}
-                                <span>{id}</span>
-                              </span>
-                              <strong>{p?.id || "미배정"}</strong>
-                              <span className="desk-project">
-                                {p
-                                  ? `${p.project}${future ? " · 예약" : ""}`
-                                  : "배정 가능"}
-                              </span>
-                              <span className="chair" />
-                            </button>
-                          );
-                        },
-                      )}
-                    </div>
-                    <div className="zone-divider">
-                      <span>공용 통로</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="office-bottom">
-                <span>PHONE BOOTH</span>
-                <span>PRINT & STORAGE</span>
-                <div>
-                  <MapPin size={13} /> 가상 업무공간 1층
-                </div>
-              </div>
-            </div>
-            {!historical && (
-              <div className="seat-save-bar">
-                <div>
-                  <span
-                    className={cx("save-state-dot", hasSeatEdits && "dirty")}
-                  />
-                  <span>
-                    {hasSeatEdits
-                      ? `${pendingSeatChanges.length}건 미저장`
-                      : `저장된 배치도 v${data.versions.at(-1).version}`}
-                  </span>
-                  <small>임시 편집은 현재 탭·역할에만 유지됩니다.</small>
-                </div>
-                <Btn
-                  icon={Save}
-                  variant="primary"
-                  disabled={!hasSeatEdits}
-                  onClick={saveSeatChanges}
-                >
-                  변경 저장
-                </Btn>
-              </div>
-            )}
-            <div className="map-legend">
-              <span>
-                <b className="legend-swatch sfa" />
-                SFA
-              </span>
-              <span>
-                <b className="legend-swatch gw" />
-                그룹웨어
-              </span>
-              <span>
-                <b className="legend-swatch" />
-                미배정
-              </span>
-              <p>
-                <Lock size={13} />
-                {scope === "PMO"
-                  ? "전체 프로젝트 배정 가능"
-                  : `${scope} 인원만 배정·변경 가능`}
-              </p>
-            </div>
-          </section>
-          <aside className="card versions-card">
-            <div className="card-heading">
-              <div>
-                <h2>
-                  <History size={17} /> 버전 기록
-                </h2>
-                <p>좌석 변경 사항을 빠짐없이 기록해요.</p>
-              </div>
-            </div>
-            <div className="version-list">
-              {[...data.versions].reverse().map((v) => (
-                <button
-                  key={v.version}
-                  onClick={() =>
-                    setSeatVersion(
-                      v.version === data.versions.at(-1).version
-                        ? null
-                        : v.version,
-                    )
-                  }
-                  className={cx(
-                    "version-item",
-                    version.version === v.version && "selected",
-                  )}
-                >
-                  <span className="version-point" />
-                  <div>
-                    <div className="version-item-top">
-                      <strong>v{v.version}</strong>
-                      {v.version === data.versions.at(-1).version && (
-                        <span>최신</span>
-                      )}
-                    </div>
-                    <p>{v.reason}</p>
-                    <span>{v.by}</span>
-                    <time>{v.date}</time>
-                  </div>
-                </button>
-              ))}
-            </div>
-            <div className="versions-foot">
-              <ShieldCheck size={16} />
-              <p>
-                모든 관리자가 같은 원장을 사용합니다.
-                <br />
-                저장 버튼을 누를 때만 새 버전이 생성됩니다.
-              </p>
-            </div>
-          </aside>
-        </div>
-      </>
-    );
-  }
   function Messages() {
     const messages = data.messages.filter((m) =>
       admin ? scope === "PMO" || m.project === scope : m.personId === member.id,
@@ -2264,7 +1781,7 @@ export default function App() {
               onClick={() =>
                 setModal({
                   type: "inquiry",
-                  id: admin ? scoped[0].id : member.id,
+                  id: admin ? scoped[0]?.id : member.id,
                 })
               }
             >
@@ -2431,7 +1948,7 @@ export default function App() {
                 "tasks",
                 "준비 작업",
                 `${progress(member)}% 준비`,
-                "계정·출입·좌석 준비 확인",
+                "계정·출입 준비 확인",
                 ClipboardList,
               ],
             ].map(([id, title, count, desc, Icon]) => (
@@ -2472,11 +1989,11 @@ export default function App() {
     );
   }
   function MemberHome() {
-    const pct = progress(member, data.seats),
+    const pct = progress(member, undefined),
       next = personTasks(member).filter(
         (t) =>
           t.owner === "member" &&
-          ["ready", "fix"].includes(taskStatus(member, t.id, data.seats)),
+          ["ready", "fix"].includes(taskStatus(member, t.id, undefined)),
       );
     return (
       <>
@@ -2498,7 +2015,7 @@ export default function App() {
               {member.project} 프로젝트
             </span>
             <h2>
-              {isPrepared(member, data.seats)
+              {isPrepared(member, undefined)
                 ? "투입 준비를 모두 마쳤어요."
                 : "하나씩 준비하면, 시작이 가까워져요."}
             </h2>
@@ -2518,7 +2035,7 @@ export default function App() {
             </div>
             <div className="hero-footer">
               <CheckCircle2 size={14} />
-              {isPrepared(member, data.seats)
+              {isPrepared(member, undefined)
                 ? "모든 필수 준비가 충족되었습니다."
                 : `필수 준비 ${requiredTasks(member, data.customTasks).filter((t) => taskStatus(member, t.id) === "done").length}/${requiredTasks(member, data.customTasks).length} 완료`}
             </div>
@@ -2535,7 +2052,7 @@ export default function App() {
               icon: GraduationCap,
               title: "교육",
               num: ["O08", "O09"].filter(
-                (id) => taskStatus(member, id, data.seats) === "done",
+                (id) => taskStatus(member, id, undefined) === "done",
               ).length,
               total: 2,
               color: "blue",
@@ -2545,17 +2062,10 @@ export default function App() {
               icon: FileText,
               title: "서류",
               num: ["O10", "O11"].filter(
-                (id) => taskStatus(member, id, data.seats) === "done",
+                (id) => taskStatus(member, id, undefined) === "done",
               ).length,
               total: 2,
               color: "purple",
-            },
-            {
-              id: "myseat",
-              icon: Armchair,
-              title: "내 좌석",
-              num: currentSeat?.[0] || "미배정",
-              color: "green",
             },
           ].map((c) => (
             <button
@@ -2617,7 +2127,7 @@ export default function App() {
                     <strong>{t.title}</strong>
                     <p>{t.desc}</p>
                   </div>
-                  <Badge status={taskStatus(member, t.id, data.seats)} />
+                  <Badge status={taskStatus(member, t.id, undefined)} />
                   {actionFor(member, t)}
                 </div>
               ))}
@@ -2625,7 +2135,7 @@ export default function App() {
           ) : (
             <Empty
               title={
-                isPrepared(member, data.seats)
+                isPrepared(member, undefined)
                   ? "모든 준비를 마쳤어요!"
                   : "주관사의 준비를 기다리고 있어요"
               }
@@ -2651,7 +2161,7 @@ export default function App() {
                 .map((t) => (
                   <div key={t.id}>
                     <span>{t.title}</span>
-                    <Badge status={taskStatus(member, t.id, data.seats)} />
+                    <Badge status={taskStatus(member, t.id, undefined)} />
                   </div>
                 ))}
             </div>
@@ -2700,8 +2210,8 @@ export default function App() {
         </div>
         <div className="education-grid">
           {["O08", "O09"].map((id, i) => {
-            const done = taskStatus(member, id, data.seats) === "done",
-              waiting = taskStatus(member, id, data.seats) === "waiting";
+            const done = taskStatus(member, id, undefined) === "done",
+              waiting = taskStatus(member, id, undefined) === "waiting";
             return (
               <section className="card education-card" key={id}>
                 <div className={cx("course-art", i && "purple")}>
@@ -2815,7 +2325,7 @@ export default function App() {
           </div>
           <div className="document-cards">
             {["O10", "O11"].map((id) => {
-              const status = taskStatus(member, id, data.seats);
+              const status = taskStatus(member, id, undefined);
               return (
                 <div className="document-tile" key={id}>
                   <span className="document-type">
@@ -2896,81 +2406,6 @@ export default function App() {
       </>
     );
   }
-  function MySeat() {
-    const assignment = currentSeat?.[1];
-    return (
-      <>
-        <PageHeading
-          title="내 좌석"
-          desc="배정된 업무 공간과 사용 기간을 확인하세요."
-        />
-        {assignment ? (
-          <div className="myseat-layout">
-            <section className="card myseat-card">
-              <span className="eyebrow">YOUR WORKSPACE</span>
-              <span className="myseat-illustration">
-                <Armchair size={85} strokeWidth={1} />
-              </span>
-              <h2>{currentSeat[0]}</h2>
-              <p>가상 업무공간 · 1층 · {currentSeat[0][0]} 구역</p>
-              <Badge tone="green">좌석 배정 완료</Badge>
-              <div className="myseat-dates">
-                <span>
-                  사용 시작<strong>{fmt(assignment.start)}</strong>
-                </span>
-                <ArrowRight size={17} />
-                <span>
-                  사용 종료<strong>{fmt(assignment.end)}</strong>
-                </span>
-              </div>
-              <Btn
-                icon={MessageSquare}
-                onClick={() =>
-                  setModal({ type: "inquiry", id: member.id, task: "O14" })
-                }
-              >
-                좌석 관련 문의
-              </Btn>
-            </section>
-            <section className="card space-guide">
-              <h2>업무 공간 이용 안내</h2>
-              {[
-                "좌석 이동은 주관사 담당자를 통해 요청해 주세요.",
-                "개인 문서와 장비는 업무 종료 후 안전하게 보관해 주세요.",
-                "공용 공간과 회의실은 사용 후 정리해 주세요.",
-                "철수 시 반납 확인 후 배정이 종료됩니다.",
-              ].map((t, i) => (
-                <div key={t}>
-                  <span>0{i + 1}</span>
-                  <p>{t}</p>
-                </div>
-              ))}
-              <div className="info-note">
-                <Lock size={16} />
-                좌석 배정·변경은 주관사에서 처리합니다.
-              </div>
-            </section>
-          </div>
-        ) : (
-          <section className="card">
-            <Empty
-              title="아직 좌석을 준비하고 있어요"
-              desc="주관사에서 좌석을 배정하면 위치와 사용 기간이 표시됩니다."
-              icon={Armchair}
-            >
-              <Btn
-                onClick={() =>
-                  setModal({ type: "inquiry", id: member.id, task: "O14" })
-                }
-              >
-                담당자에게 문의
-              </Btn>
-            </Empty>
-          </section>
-        )}
-      </>
-    );
-  }
   function SettingsPage() {
     const [links, setLinks] = useState({ ...data.settings });
     return (
@@ -2979,6 +2414,7 @@ export default function App() {
           title="운영 기준"
           desc="교육 경로와 알림 정책 등 프로젝트 공통 기준을 관리하세요."
         />
+        {actor.scope === "PMO" && <LegacyMigration onComplete={accept} />}
         <ContactRoutes
           key={scope}
           scope={scope}
@@ -3084,26 +2520,10 @@ export default function App() {
               <h2>
                 <ClipboardList size={19} /> 공통 작업 템플릿
               </h2>
-              <p>투입 준비 16개 · 철수 3개 · 버전 v1.1</p>
+              <p>계정·출입·교육·서류 준비 · 버전 v2.0</p>
             </div>
             <Btn icon={Eye} onClick={() => setModal({ type: "template" })}>
               템플릿 보기
-            </Btn>
-          </div>
-        </section>
-        <section className="card settings-card danger-zone">
-          <div className="setting-toggle">
-            <div>
-              <strong>시연 데이터 초기화</strong>
-              <p>SFA·그룹웨어 10명과 좌석 배치도 v1~v4로 되돌립니다.</p>
-            </div>
-            <Btn
-              icon={RefreshCw}
-              variant="danger"
-              disabled={scope !== "PMO"}
-              onClick={() => setModal({ type: "reset" })}
-            >
-              초기화
             </Btn>
           </div>
         </section>
@@ -3171,7 +2591,7 @@ export default function App() {
     if (modal.type === "person" && p)
       return (
         <Modal
-          title={`${p.id} · 인원 상세`}
+          title={`${p.name} · 인원 상세`}
           subtitle={`${p.project} 프로젝트 · ${p.company}`}
           wide
           onClose={close}
@@ -3180,7 +2600,7 @@ export default function App() {
             <Avatar person={p} />
             <div>
               <h3>
-                {p.id}{" "}
+                {p.name} ({p.project}){" "}
                 <Badge tone={p.lifecycle === "투입 중" ? "green" : "blue"}>
                   {p.lifecycle}
                 </Badge>
@@ -3192,9 +2612,29 @@ export default function App() {
             </div>
             <div className="summary-progress">
               <span>투입 준비율</span>
-              <Progress value={progress(p, data.seats)} />
+              <Progress value={progress(p, undefined)} />
             </div>
           </div>
+          {p.registrationStatus === "pending_registration" && (
+            <div className="info-note registration-banner">
+              <div>
+                <strong>본인 등록 대기</strong>
+                <p>
+                  초대 링크로 추가 정보 입력을 완료하면 계정·출입, 교육, 서류
+                  준비를 진행할 수 있습니다.
+                </p>
+              </div>
+              {actor.scope === "PMO" && (
+                <Btn
+                  icon={Link2}
+                  variant="primary"
+                  onClick={() => setModal({ type: "invitations", id: p.id })}
+                >
+                  초대 링크 생성·복사
+                </Btn>
+              )}
+            </div>
+          )}
           <div className="tabs modal-tabs">
             {[
               ["tasks", "준비 작업"],
@@ -3217,7 +2657,21 @@ export default function App() {
               <div className="person-info">
                 <div className="detail-grid">
                   {[
-                    ["성명", p.name || p.id],
+                    ["성명", p.name || p.displayId],
+                    [
+                      "생년월일",
+                      p.birthDate ||
+                        (p.birthYear
+                          ? `${p.birthYear}년 · 월/일 확인 필요`
+                          : "확인 필요"),
+                    ],
+                    [
+                      "등록 상태",
+                      p.registrationStatus === "pending_registration"
+                        ? "본인 등록 대기"
+                        : "등록 완료",
+                    ],
+                    ["고유 기록 ID", p.id],
                     ["연락처", p.phone || "미입력"],
                     ["프로젝트", p.project],
                     ["소속 수행사", p.company],
@@ -3228,12 +2682,6 @@ export default function App() {
                     [
                       "관리 담당자",
                       `${p.project === "SFA" ? "SFA" : "GW"}-담당자`,
-                    ],
-                    [
-                      "좌석",
-                      Object.entries(data.seats).find(
-                        ([, s]) => s?.personId === p.id,
-                      )?.[0] || "미배정",
                     ],
                   ].map(([k, v]) => (
                     <div key={k}>
@@ -3278,40 +2726,46 @@ export default function App() {
           </div>
         </Modal>
       );
-    if (modal.type === "selfRegister" && !admin)
+    if (modal.type === "continueRegistration")
       return (
-        <SelfRegistration
+        <Modal title="내 등록 이어하기" onClose={close}>
+          <div className="modal-body">
+            <ContinueRegistration onClose={close} />
+          </div>
+        </Modal>
+      );
+    if (
+      modal.type === "planImport" &&
+      actor.kind === "admin" &&
+      actor.scope === "PMO"
+    )
+      return (
+        <PlanImport
           Modal={Modal}
+          initialProject={scope === "PMO" ? "SFA" : scope}
           people={data.people}
           onClose={close}
-          onRegister={(form) => {
-            try {
-              const person = registerSelf(data, form);
-              mutate((d) => {
-                d.people.push(person);
-                audit(
-                  d,
-                  `${person.name} 본인 등록`,
-                  `${person.project} · 교육 2개·서류 2개 및 주관사 작업 자동 배정`,
-                  "person",
-                );
-                addNotice(
-                  d,
-                  person,
-                  "신규 수행사 등록",
-                  `${person.name}님의 투입 준비 작업이 배정되었습니다.`,
-                );
-              });
-              setMode("member");
-              setMemberId(person.id);
-              go("dashboard");
-              notify(
-                "등록했습니다. 교육과 서류를 바로 시작하고 주관사의 준비 상태도 확인할 수 있습니다.",
-              );
-            } catch (error) {
-              notify(error.message);
-            }
+          onComplete={(state) => {
+            accept(state);
+            close();
+            go("people");
+            notify(
+              "확정한 인원을 서버에 저장했습니다. 개인 초대 링크를 발급해 주세요.",
+            );
           }}
+        />
+      );
+    if (
+      modal.type === "invitations" &&
+      actor.kind === "admin" &&
+      actor.scope === "PMO"
+    )
+      return (
+        <InvitationManager
+          Modal={Modal}
+          people={data.people}
+          personId={modal.id}
+          onClose={close}
         />
       );
     if (modal.type === "taskExport" && admin)
@@ -3345,7 +2799,7 @@ export default function App() {
           onClose={close}
           onDraft={(values) => {
             if (admin || p.id !== member.id) return;
-            mutate((d) => {
+            return mutate((d) => {
               const person = d.people.find((x) => x.id === p.id);
               person.documentDrafts ||= {};
               person.documentDrafts[task.id] = {
@@ -3374,7 +2828,7 @@ export default function App() {
               task={task}
               admin={admin}
               onOnline={() => setModal({ ...modal, online: true })}
-              status={evidenceStatus(p, task.id, data.seats)}
+              status={evidenceStatus(p, task.id, undefined)}
               onClose={close}
               onUpload={(f) => uploadFile(p, task.id, f)}
               onSimulate={() => simulateAI(p, task.id)}
@@ -3406,7 +2860,7 @@ export default function App() {
       return (
         <Modal
           title={task.title}
-          subtitle={`${p.id} · ${task.owner === "admin" ? "주관사" : "수행사"} 수행 작업`}
+          subtitle={`${p.name} · ${task.owner === "admin" ? "주관사" : "수행사"} 수행 작업`}
           onClose={close}
         >
           <div className="modal-body">
@@ -3450,122 +2904,6 @@ export default function App() {
           </footer>
         </Modal>
       );
-    if (modal.type === "assign")
-      return (
-        <SeatAssignForm
-          data={{ ...data, seats: editableSeats }}
-          scope={scope}
-          initial={modal}
-          onClose={close}
-          onSubmit={(args) => {
-            if (
-              stageSeatEdit((draft) =>
-                stageSeatAssignment(data, draft, { ...args, scope }),
-              )
-            ) {
-              close();
-              notify(
-                "좌석 배정을 임시 반영했습니다. 변경 저장을 눌러 확정하세요.",
-              );
-            }
-          }}
-        />
-      );
-    if (modal.type === "seatInfo") {
-      const v = data.versions.find((v) => v.version === modal.version);
-      const seats = v?.seats || editableSeats,
-        s = seats[modal.seat],
-        person = data.people.find((p) => p.id === s?.personId),
-        editable = !v && (!person || canEdit(person));
-      return (
-        <Modal
-          title={`${modal.seat} · 좌석 정보`}
-          subtitle={
-            v
-              ? `과거 버전 v${v.version} · 읽기 전용`
-              : "가상 업무공간 · 1층 · 공용 배치도"
-          }
-          onClose={close}
-        >
-          <div className="modal-body">
-            <div className="seat-info-big">
-              <Armchair size={45} />
-              <h3>{modal.seat}</h3>
-              <Badge tone={person ? "green" : "gray"}>
-                {person ? "배정됨" : "미배정"}
-              </Badge>
-            </div>
-            {person ? (
-              <div className="detail-grid">
-                {[
-                  ["배정 인원", person.id],
-                  ["프로젝트", person.project],
-                  ["사용 시작", fmt(s.start)],
-                  ["사용 종료", fmt(s.end)],
-                ].map(([k, val]) => (
-                  <div key={k}>
-                    <span>{k}</span>
-                    <strong>{val}</strong>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="center muted">
-                새로운 인원을 배정할 수 있는 좌석입니다.
-              </p>
-            )}
-            {!editable && (
-              <div className="notice">
-                <Lock size={16} />
-                {v
-                  ? "과거 버전은 변경할 수 없습니다."
-                  : "다른 프로젝트 인원의 배정은 PMO만 변경할 수 있습니다."}
-              </div>
-            )}
-          </div>
-          <footer>
-            <Btn onClick={close}>닫기</Btn>
-            {editable && person && (
-              <Btn
-                variant="danger"
-                onClick={() => {
-                  if (
-                    stageSeatEdit((draft) =>
-                      stageSeatRelease(data, draft, {
-                        seatId: modal.seat,
-                        scope,
-                      }),
-                    )
-                  ) {
-                    close();
-                    notify(
-                      "배정 해제를 임시 반영했습니다. 변경 저장을 눌러 확정하세요.",
-                    );
-                  }
-                }}
-              >
-                배정 해제
-              </Btn>
-            )}
-            {editable && (
-              <Btn
-                variant="primary"
-                onClick={() =>
-                  setModal({
-                    type: "assign",
-                    seatId: modal.seat,
-                    personId: person?.id,
-                    base: data.versions.at(-1).version,
-                  })
-                }
-              >
-                {person ? "배정 변경" : "인원 배정"}
-              </Btn>
-            )}
-          </footer>
-        </Modal>
-      );
-    }
     if (modal.type === "register")
       return (
         <RegisterForm
@@ -3573,35 +2911,20 @@ export default function App() {
           people={data.people}
           onClose={close}
           onTemplate={() => workbook("template")}
-          onSave={(rows) => {
-            mutate((d) => {
-              rows.forEach((row) => {
-                const person = {
-                  ...row,
-                  id: row.name,
-                  lifecycle: "투입 예정",
-                  tasks: { O01: "done" },
-                  files: {},
-                  certChecks: {},
-                  notes: {},
-                  history: [
-                    {
-                      text: "신규 인원 등록",
-                      date: new Date().toLocaleString("ko-KR"),
-                    },
-                  ],
-                };
-                d.people.push(person);
+          onSave={async (rows) => {
+            try {
+              const result = await api("/api/people", {
+                method: "POST",
+                body: { rows, requestId: modal.requestId },
               });
-              audit(
-                d,
-                `${rows[0].project} 프로젝트 인원 등록`,
-                `${rows.length}명 · 관리자가 명단 등록`,
-                "person",
+              accept(result.state);
+              close();
+              notify(
+                "본인 등록 대기 인원을 저장했습니다. 초대 링크를 발급해 주세요.",
               );
-            });
-            close();
-            notify(`${rows.length}명의 인원을 등록했습니다.`);
+            } catch (error) {
+              notify(error.message);
+            }
           }}
         />
       );
@@ -3677,17 +3000,11 @@ export default function App() {
           onClose={close}
           onSave={(form) => {
             if (!canEdit(p)) return;
-            const assignment = Object.values(data.seats).find(
-              (s) => s?.personId === p.id,
-            );
-            if (
-              assignment &&
-              (assignment.start < form.start || assignment.end > form.end)
-            )
-              return notify("현재 좌석 사용 기간을 먼저 조정해 주세요.");
             mutate((d) => {
               const person = d.people.find((x) => x.id === p.id);
+              const previousStart = person.start;
               person.start = form.start;
+              reschedulePreparation(d, person, previousStart, form.start);
               person.end = form.end;
               person.role = form.role;
               person.history.unshift({
@@ -3706,142 +3023,20 @@ export default function App() {
         <OffboardDialog
           person={p}
           onClose={close}
-          onConfirm={() => {
+          onConfirm={async () => {
             if (!canEdit(p)) return;
-            if (
-              stageSeatEdit((draft) =>
-                stageSeatOffboarding(data, draft, { personId: p.id, scope }),
-              )
-            ) {
-              close();
-              setPage("seats");
-              setSeatVersion(null);
-              notify(
-                "철수·좌석 반납을 임시 반영했습니다. 변경 저장을 누르면 함께 확정됩니다.",
-              );
-            }
+            await mutate((d) => {
+              const person = d.people.find((x) => x.id === p.id);
+              person.lifecycle = "철수 완료";
+              person.history.unshift({
+                text: "계정·출입 및 자료 반납 확인 후 철수 완료",
+                date: new Date().toLocaleString("ko-KR"),
+              });
+            });
+            close();
+            notify("철수 확인을 저장했습니다.");
           }}
         />
-      );
-    if (modal.type === "seatChanges")
-      return (
-        <Modal
-          title="저장 전 변경 내역"
-          subtitle={`기준 배치도 v${activeSeatDraft?.baseVersion} · 아직 다른 관리자에게 반영되지 않았습니다.`}
-          onClose={close}
-        >
-          <div className="modal-body seat-change-list">
-            {pendingSeatChanges.map((c) => (
-              <div key={c.personId}>
-                <span className="draft-change-kind">{c.kind}</span>
-                <div>
-                  <strong>{c.personId}</strong>
-                  <p>
-                    {c.fromSeatId || "미배정"} <ArrowRight size={13} />{" "}
-                    {c.toSeatId || "배정 해제"}
-                  </p>
-                  {c.after && (
-                    <small>
-                      {fmt(c.after.start)} ~ {fmt(c.after.end)}
-                    </small>
-                  )}
-                </div>
-              </div>
-            ))}
-            {activeSeatDraft?.offboarding.map((id) => (
-              <div key={`off-${id}`}>
-                <span className="draft-change-kind">철수</span>
-                <div>
-                  <strong>{id}</strong>
-                  <p>저장 시 철수 완료·좌석 반납 확정</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <footer>
-            <Btn onClick={close}>닫기</Btn>
-            <Btn
-              variant="primary"
-              icon={Save}
-              onClick={() => {
-                saveSeatChanges();
-                close();
-              }}
-            >
-              변경 저장
-            </Btn>
-          </footer>
-        </Modal>
-      );
-    if (modal.type === "discardSeat")
-      return (
-        <Modal
-          title="임시 변경을 취소할까요?"
-          subtitle="아직 저장하지 않은 좌석 변경과 철수 확인이 취소됩니다."
-          onClose={close}
-        >
-          <div className="modal-body">
-            <div className="notice">
-              <Undo2 size={19} />
-              저장된 최신 배치도와 기존 버전 이력은 유지됩니다. 임시 편집만
-              취소합니다.
-            </div>
-          </div>
-          <footer>
-            <Btn onClick={close}>계속 편집</Btn>
-            <Btn
-              variant="primary"
-              onClick={() => {
-                setSeatDrafts((all) => ({ ...all, [scope]: null }));
-                setSeatVersion(null);
-                close();
-                notify("임시 변경을 취소하고 최신 배치도로 돌아왔습니다.");
-              }}
-            >
-              임시 변경 취소
-            </Btn>
-          </footer>
-        </Modal>
-      );
-    if (modal.type === "reset")
-      return (
-        <Modal
-          title="시연 데이터를 초기화할까요?"
-          subtitle="이 브라우저에 저장한 변경 사항이 초기 상태로 돌아갑니다."
-          onClose={close}
-        >
-          <div className="modal-body">
-            <div className="notice error">
-              <AlertTriangle size={20} />
-              등록한 인원, 제출 파일명, 문의, 작업 상태, 좌석 변경이
-              초기화됩니다. 초기 10명과 좌석 v1~v4는 다시 생성됩니다.
-            </div>
-          </div>
-          <footer>
-            <Btn onClick={close}>취소</Btn>
-            <Btn
-              variant="danger"
-              onClick={() => {
-                Object.values(urls.current).forEach(URL.revokeObjectURL);
-                urls.current = {};
-                clearEvidence().catch(() =>
-                  notify(
-                    "보관 원본 초기화에 실패했습니다. 브라우저 저장 공간을 확인해 주세요.",
-                  ),
-                );
-                setData(seed());
-                setSeatDrafts({});
-                setMemberId("SFA-3");
-                setSeatVersion(null);
-                setChat([]);
-                close();
-                notify("시연 데이터를 초기화했습니다.");
-              }}
-            >
-              초기화하기
-            </Btn>
-          </footer>
-        </Modal>
       );
     if (modal.type === "training")
       return (
@@ -3875,7 +3070,7 @@ export default function App() {
     if (modal.type === "template")
       return (
         <Modal
-          title="공통 작업 템플릿 v1.1"
+          title="공통 작업 템플릿 v2.0"
           subtitle="선행 작업과 수행 주체로 연결된 투입 준비 흐름"
           wide
           onClose={close}
@@ -3895,8 +3090,8 @@ export default function App() {
             ))}
             {[
               ["X01", "철수 예정일·반납 대상 확인", "주관사"],
-              ["X02", "좌석·출입 관련 반납 보고", "수행사"],
-              ["X03", "계정 정리·좌석 반납 확인 및 종료", "주관사"],
+              ["X02", "출입·자료 반납 보고", "수행사"],
+              ["X03", "계정·출입 정리 확인 및 종료", "주관사"],
             ].map(([id, title, owner]) => (
               <div key={id}>
                 <code>{id}</code>
@@ -3906,6 +3101,44 @@ export default function App() {
               </div>
             ))}
           </div>
+        </Modal>
+      );
+    if (modal.type === "mailAlert")
+      return (
+        <Modal
+          title={`수행사 투입 요청 ${mail.alertIds.length}건`}
+          subtitle="분석 초안입니다. 승인 전에는 명단과 준비 작업을 변경하지 않습니다."
+          onClose={() => {
+            mail.dismiss();
+            close();
+          }}
+        >
+          <div className="modal-body">
+            <p>
+              새 메일 {mail.syncResult?.imported || 0}통 중 수행사 투입 관련
+              메일 {mail.syncResult?.relatedMessages || 0}통을 찾았습니다.
+            </p>
+          </div>
+          <footer>
+            <Btn
+              onClick={() => {
+                mail.dismiss();
+                close();
+              }}
+            >
+              나중에 검토
+            </Btn>
+            <Btn
+              variant="primary"
+              onClick={() => {
+                const ids = [...mail.alertIds];
+                mail.dismiss();
+                go("mail", ids);
+              }}
+            >
+              검토하기
+            </Btn>
+          </footer>
         </Modal>
       );
     if (modal.type === "help")
@@ -3921,26 +3154,29 @@ export default function App() {
             </div>
             <h3>이렇게 시연해 보세요</h3>
             <ol className="guide-list">
-              <li>상단에서 주관사 또는 수행사 화면으로 전환하세요.</li>
+              <li>
+                PMO로 로그인해 인력계획서를 불러오고 시트·헤더·열과 미리보기
+                행을 확인하세요.
+              </li>
               <li>주관사 드롭다운에서 PMO, SFA, 그룹웨어를 선택하세요.</li>
               <li>
-                SFA-4의 계정 발급을 완료한 뒤 수행사 화면에서 후속 작업이
-                열리는지 확인하세요.
+                확정한 인원의 개인 초대 링크를 별도 브라우저로 열어 추가 정보를
+                입력하세요.
               </li>
               <li>
-                서류를 제출하고 시연용 AI 결과를 본 뒤, 담당자로 전환해
-                확인·보완하세요.
+                수행사에서 서류를 제출하고 주관사 세션에서 원문 확인·승인 또는
+                보완 요청을 진행하세요.
               </li>
               <li>
-                좌석을 배정하고 다른 담당자 화면에서 최신 배치도와 버전 이력을
-                확인하세요.
+                개인 초대로 본인 등록을 마치고 다른 담당자 화면에서 최신 준비
+                상태를 확인하세요.
               </li>
             </ol>
             <div className="notice">
               <Monitor size={18} />
-              브라우저 로컬 프로토타입입니다. 파일명과 업무 상태를 이 기기에
-              저장합니다. 실제 파일 업로드 서버·인증·AI·두레이 API는 연결되어
-              있지 않습니다. 민감한 실제 자료 대신 시연 자료를 사용해 주세요.
+              명단·상태·원본은 서버에 저장합니다. 문서 가이드·본인확인은 시연
+              기능이며 Dooray 전송은 미연동입니다. 인력계획서 AI 매핑은 서버의
+              AI 키 설정 시 사용할 수 있습니다.
             </div>
           </div>
         </Modal>
@@ -4048,7 +3284,7 @@ export default function App() {
                   ? scope === "PMO"
                     ? "PMO 관리자"
                     : `${scope === "SFA" ? "SFA" : "GW"}-담당자`
-                  : member.id}
+                  : member.name}
               </strong>
               <span>
                 {admin ? "주관사 · 관리자" : "수행사 · 프로젝트 참여자"}
@@ -4082,29 +3318,22 @@ export default function App() {
             <strong>{screenTitle}</strong>
           </div>
           <div className="topbar-actions">
-            <div className="mode-switch" aria-label="화면 전환">
+            {actor.kind === "admin" && actor.scope === "PMO" && (
               <button
-                className={admin ? "selected" : ""}
-                onClick={() => {
-                  setMode("admin");
-                  go("dashboard");
-                  setChat([]);
-                }}
+                className="btn mail-header-sync"
+                disabled={mail.syncing}
+                onClick={() => mail.sync().catch((e) => notify(e.message))}
               >
-                <Building2 size={14} />
-                주관사
+                <Mail size={15} />
+                {mail.syncing ? "메일 분석 중…" : "새 메일 확인"}
               </button>
-              <button
-                className={!admin ? "selected" : ""}
-                onClick={() => {
-                  setMode("member");
-                  go("dashboard");
-                  setChat([]);
-                }}
-              >
+            )}
+            <div className="mode-switch" aria-label="접속 역할">
+              <button className="selected">
                 <UserRound size={14} />
-                수행사
+                {admin ? "주관사" : "수행사"}
               </button>
+              <button onClick={onLogout}>로그아웃</button>
             </div>
             <span className="header-divider" />
             <div className="scope-selector">
@@ -4112,6 +3341,7 @@ export default function App() {
               <select
                 aria-label={admin ? "주관사 역할 선택" : "수행사 인원 선택"}
                 value={admin ? scope : member.id}
+                disabled={!admin || actor.scope !== "PMO"}
                 onChange={(e) => {
                   admin
                     ? setScope(e.target.value)
@@ -4124,12 +3354,15 @@ export default function App() {
                 }}
               >
                 {admin
-                  ? ["PMO", "SFA", "그룹웨어"].map((s) => (
-                      <option key={s}>{s}</option>
-                    ))
-                  : data.people.map((p) => (
+                  ? (actor.scope === "PMO"
+                      ? ["PMO", "SFA", "그룹웨어"]
+                      : [actor.scope]
+                    ).map((s) => <option key={s}>{s}</option>)
+                  : [member].map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.name !== p.id ? `${p.name} · ${p.id}` : p.id}
+                        {p.name !== p.id
+                          ? `${p.name} · ${p.displayId || ""}`
+                          : p.id}
                       </option>
                     ))}
               </select>
@@ -4159,10 +3392,9 @@ export default function App() {
           {!admin && (
             <button
               className="self-register-entry"
-              onClick={() => setModal({ type: "selfRegister" })}
+              onClick={() => setModal({ type: "continueRegistration" })}
             >
-              <UserRound size={14} />
-              수행사 본인 등록
+              <UserRound size={14} />내 등록 이어하기
             </button>
           )}
           <span>
@@ -4170,17 +3402,32 @@ export default function App() {
             INTERACTIVE PROTOTYPE
           </span>
           <p>
-            가상 데이터로 자유롭게 둘러보세요. 역할 전환으로 연결된 업무를
-            확인할 수 있어요.
+            서버에 저장한 인원과 준비 상태를 연결합니다. 교육·서류 AI 가이드는
+            시연용입니다.
           </p>
           <button onClick={() => setModal({ type: "help" })}>
             시연 가이드
             <ArrowUpRight size={12} />
           </button>
         </div>
+        <div className="server-save-status" role="status">
+          {saving ? "서버에 저장 중…" : "서버 저장 · 브라우저 간 공유"}
+          {saveError && (
+            <button
+              onClick={() => {
+                clearError();
+                refresh();
+              }}
+            >
+              최신 상태 다시 확인
+            </button>
+          )}
+        </div>
         <main
           className="main-content"
-          key={`${mode}-${scope}-${member.id}-${page}`}
+          key={
+            admin ? `${mode}-${scope}-${page}` : `${mode}-${member.id}-${page}`
+          }
         >
           {admin ? (
             page === "dashboard" ? (
@@ -4191,10 +3438,17 @@ export default function App() {
               Tasks()
             ) : page === "reviews" ? (
               Reviews()
-            ) : page === "seats" ? (
-              Seats()
             ) : page === "messages" ? (
               Messages()
+            ) : page === "mail" && actor.scope === "PMO" ? (
+              <MailReviewPage
+                key={mailReviewKey}
+                initialReviewIds={mailReviewIds}
+                mail={mail}
+                data={data}
+                onState={accept}
+                onInvite={(id) => setModal({ type: "invitations", id })}
+              />
             ) : page === "settings" ? (
               <SettingsPage />
             ) : (
@@ -4210,8 +3464,6 @@ export default function App() {
             Education()
           ) : page === "documents" ? (
             Documents()
-          ) : page === "myseat" ? (
-            MySeat()
           ) : (
             Messages()
           )}
@@ -4326,7 +3578,7 @@ export default function App() {
             <Layers size={14} />
             {admin
               ? `${scope} · ${screenTitle}`
-              : `${member.id} · ${screenTitle}`}
+              : `${member.name} · ${screenTitle}`}
           </div>
           <div className="chat-scroll">
             {!chat.length ? (
@@ -4344,7 +3596,7 @@ export default function App() {
                   "현재 준비 미완료 현황을 요약해 줘",
                   "서류는 어떻게 작성하나요?",
                   "교육 수료증 등록 방법을 알려줘",
-                  "현재 좌석 현황을 알려줘",
+                  "현재 계정·출입 준비 현황을 알려줘",
                 ].map((q) => (
                   <button key={q} onClick={() => askAI(q)}>
                     {q}
@@ -4466,13 +3718,14 @@ function DocumentDialog({
     [read, setRead] = useState(false),
     [guideTab, setGuideTab] = useState("guide");
   const input = useRef();
+  const [uploading, setUploading] = useState(false);
   const edu = task.kind === "education",
     file = person.files[task.id],
     isConsent = task.id === "O11";
   return (
     <Modal
       title={task.title}
-      subtitle={`${person.id} · ${person.project} 프로젝트 · ${edu ? "수료증" : "양식 v1.0"}`}
+      subtitle={`${person.name} · ${person.project} 프로젝트 · ${edu ? "수료증" : "양식 v1.0"}`}
       onClose={onClose}
       wide
       className="document-modal"
@@ -4499,7 +3752,11 @@ function DocumentDialog({
               {/\.(png|jpe?g)$/i.test(file?.name) ? (
                 <img src={previewUrl} alt="직접 선택한 제출 파일 미리보기" />
               ) : (
-                <iframe title="직접 선택한 PDF 미리보기" src={previewUrl} />
+                <iframe
+                  sandbox=""
+                  title="직접 선택한 PDF 미리보기"
+                  src={previewUrl}
+                />
               )}
             </div>
           ) : (
@@ -4525,7 +3782,7 @@ function DocumentDialog({
                   </div>
                   <div className="paper-fields">
                     <span>
-                      성명<strong>{person.id}</strong>
+                      성명<strong>{person.name}</strong>
                     </span>
                     <span>
                       소속<strong>{person.company}</strong>
@@ -4588,7 +3845,7 @@ function DocumentDialog({
                   <div className="paper-sign">
                     <span>2026년 11월 ____일</span>
                     <div>
-                      성명: {person.id}　{" "}
+                      성명: {person.name}　{" "}
                       <span className="signature-area">
                         {edu ? "발급기관 확인" : "(본인 서명)"}
                       </span>
@@ -4603,8 +3860,8 @@ function DocumentDialog({
           )}
           <div className="file-storage-note">
             <Lock size={12} />
-            새로 제출한 원본과 상태는 현재 브라우저에 보관됩니다. 초기 가상
-            제출본에는 원본이 없습니다.
+            새로 제출한 원본과 상태는 서버에 보관됩니다. 초기 가상 제출본에는
+            원본이 없습니다.
           </div>
         </div>
         <aside className="document-guide">
@@ -4821,25 +4078,37 @@ function DocumentDialog({
                   className="visually-hidden"
                   ref={input}
                   accept=".pdf,.png,.jpg,.jpeg"
-                  onChange={(e) => {
-                    onUpload(e.target.files?.[0]);
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
                     e.target.value = "";
+                    if (!file) return;
+                    setUploading(true);
+                    try {
+                      await onUpload(file);
+                    } catch (error) {
+                      onNotify(error.message);
+                    } finally {
+                      setUploading(false);
+                    }
                   }}
                 />
                 <Btn
                   className="upload-document"
                   variant="primary full"
                   icon={Upload}
-                  disabled={["waiting", "ai", "review", "error"].includes(
-                    status,
-                  )}
+                  disabled={
+                    uploading ||
+                    ["waiting", "ai", "review", "error"].includes(status)
+                  }
                   onClick={() => input.current.click()}
                 >
-                  {file
-                    ? "파일 교체·재제출"
-                    : edu
-                      ? "수료증 등록"
-                      : "작성한 서류 제출"}
+                  {uploading
+                    ? "서버에 저장 중…"
+                    : file
+                      ? "파일 교체·재제출"
+                      : edu
+                        ? "수료증 등록"
+                        : "작성한 서류 제출"}
                 </Btn>
                 <p className="upload-hint">PDF, PNG, JPG · 최대 10MB</p>
               </>
@@ -4857,423 +4126,80 @@ function DocumentDialog({
     </Modal>
   );
 }
-function SeatAssignForm({ data, scope, initial, onClose, onSubmit }) {
-  const eligible = data.people.filter(
-    (p) => canManage(scope, p) && p.lifecycle !== "철수 완료",
-  );
-  const defaultPerson =
-    eligible.find((p) => p.id === initial.personId) || eligible[0];
+function RegisterForm({ scope, onClose, onSave }) {
   const [form, setForm] = useState({
-    personId: defaultPerson?.id || "",
-    seatId: initial.seatId || SEAT_IDS.find((id) => !data.seats[id]) || "",
-    start: defaultPerson?.start || TODAY,
-    end: defaultPerson?.end || "",
-    reason: "",
-  });
-  const [error, setError] = useState("");
+      name: "",
+      company: "",
+      project: scope === "PMO" ? "SFA" : scope,
+      start: "",
+      end: "",
+      phone: "",
+      email: "",
+      role: "",
+    }),
+    [busy, setBusy] = useState(false);
   return (
     <Modal
-      title="좌석 배정"
-      subtitle={`배치도 v${initial.base} 기준 임시 배정 · 변경 저장 시 확정됩니다.`}
+      title="인원 등록"
+      subtitle="한 명을 수동으로 등록하고 개인 링크로 추가 정보를 받습니다."
       onClose={onClose}
     >
       <form
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          if (!form.personId || !form.seatId)
-            return setError("인원과 좌석을 선택해 주세요.");
-          onSubmit(form);
+          setBusy(true);
+          try {
+            await onSave([form]);
+          } finally {
+            setBusy(false);
+          }
         }}
       >
-        <div className="modal-body form-grid">
-          <label className="field">
-            <span>배정 인원</span>
-            <select
-              value={form.personId}
-              required
-              onChange={(e) => {
-                const p = eligible.find((p) => p.id === e.target.value);
-                setForm({
-                  ...form,
-                  personId: p.id,
-                  start: p.start,
-                  end: p.end,
-                });
-              }}
-            >
-              {eligible.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.id} · {p.project}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>좌석</span>
-            <select
-              value={form.seatId}
-              required
-              onChange={(e) => setForm({ ...form, seatId: e.target.value })}
-            >
-              <option value="">좌석 선택</option>
-              {SEAT_IDS.map((id) => (
-                <option
-                  value={id}
-                  key={id}
-                  disabled={
-                    !!data.seats[id] &&
-                    data.seats[id].personId !== form.personId
-                  }
-                >
-                  {id} · {data.seats[id]?.personId || "미배정"}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>사용 시작일</span>
-            <input
-              required
-              type="date"
-              value={form.start}
-              onChange={(e) => setForm({ ...form, start: e.target.value })}
-            />
-          </label>
-          <label className="field">
-            <span>사용 종료일</span>
-            <input
-              required
-              type="date"
-              min={form.start}
-              value={form.end}
-              onChange={(e) => setForm({ ...form, end: e.target.value })}
-            />
-          </label>
-          <label className="field full-field">
-            <span>배정·변경 사유</span>
-            <textarea
-              placeholder="예: 신규 투입으로 좌석 배정"
-              required
-              value={form.reason}
-              onChange={(e) => setForm({ ...form, reason: e.target.value })}
-            />
-          </label>
-          {error && <div className="notice error full-field">{error}</div>}
-          <div className="notice full-field">
-            <History size={17} />
-            좌석 배정은 임시 반영되며, 변경 저장을 누르면 모든 관리자 화면에
-            반영되고 새 버전이 생성됩니다.
+        <div className="modal-body">
+          <div className="info-note">
+            계약 인력계획서는 PMO의 ‘인력계획서 불러오기’를 이용하세요. 이
+            경로에서도 본인 등록 대기 기록만 생성하며 같은 이름의 인원을 자동
+            병합하지 않습니다.
           </div>
+          {[
+            ["name", "성명", 80],
+            ["company", "소속 수행사", 100],
+          ].map(([key, label, max]) => (
+            <label className="field" key={key}>
+              <span>{label} *</span>
+              <input
+                required
+                maxLength={max}
+                value={form[key]}
+                onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+              />
+            </label>
+          ))}
+          <label className="field">
+            <span>프로젝트</span>
+            <select
+              value={form.project}
+              disabled={scope !== "PMO"}
+              onChange={(e) => setForm({ ...form, project: e.target.value })}
+            >
+              <option>SFA</option>
+              <option>그룹웨어</option>
+            </select>
+          </label>
         </div>
         <footer>
           <Btn type="button" onClick={onClose}>
             취소
           </Btn>
-          <Btn variant="primary" icon={Check} type="submit">
-            배정 확정
-          </Btn>
+          <button className="btn primary" disabled={busy}>
+            {busy ? "저장 중…" : "본인 등록 대기로 저장"}
+          </button>
         </footer>
       </form>
     </Modal>
   );
 }
-function RegisterForm({ scope, people, onClose, onTemplate, onSave }) {
-  const [tab, setTab] = useState("excel"),
-    [rows, setRows] = useState([]),
-    [errors, setErrors] = useState([]),
-    [loading, setLoading] = useState(false),
-    [filename, setFilename] = useState("");
-  const fileInput = useRef();
-  const [form, setForm] = useState({
-    name: "",
-    project: scope === "PMO" ? "SFA" : scope,
-    company: "",
-    role: "개발자",
-    email: "",
-    start: "2026-11-16",
-    end: "2027-02-26",
-  });
-  function validate(rows) {
-    const errors = [],
-      seen = new Set(people.map((p) => p.id));
-    rows.forEach((r, i) => {
-      const n = i + 2;
-      if (!r.name || !r.company || !r.email)
-        errors.push(`${n}행 · 성명, 회사, 이메일을 입력해 주세요.`);
-      if (!["SFA", "그룹웨어"].includes(r.project))
-        errors.push(`${n}행 · 프로젝트는 SFA 또는 그룹웨어여야 합니다.`);
-      if (scope !== "PMO" && scope !== r.project)
-        errors.push(`${n}행 · ${scope} 인원만 등록할 수 있습니다.`);
-      if (seen.has(r.name))
-        errors.push(`${n}행 · 이미 등록된 인원 또는 파일 내 중복: ${r.name}`);
-      seen.add(r.name);
-      if (
-        !/^\d{4}-\d{2}-\d{2}$/.test(r.start) ||
-        !/^\d{4}-\d{2}-\d{2}$/.test(r.end) ||
-        r.start > r.end
-      )
-        errors.push(
-          `${n}행 · 날짜를 YYYY-MM-DD 형식과 올바른 기간으로 입력해 주세요.`,
-        );
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email))
-        errors.push(`${n}행 · 이메일 형식을 확인해 주세요.`);
-    });
-    if (rows.length === 0) errors.push("등록할 인원이 없습니다.");
-    return errors;
-  }
-  async function readExcel(file) {
-    if (!file) return;
-    setFilename(file.name);
-    setErrors([]);
-    setRows([]);
-    if (!/\.xlsx$/i.test(file.name) || file.size > 5 * 1024 * 1024)
-      return setErrors(["5MB 이하의 XLSX 파일을 선택해 주세요."]);
-    setLoading(true);
-    try {
-      const { default: ExcelJS } = await import("exceljs");
-      const wb = new ExcelJS.Workbook();
-      await wb.xlsx.load(await file.arrayBuffer());
-      const sheet = wb.worksheets[0];
-      if (!sheet) throw Error("시트가 없습니다.");
-      const headers = [
-        "성명",
-        "프로젝트",
-        "회사",
-        "역할",
-        "이메일",
-        "투입시작일",
-        "투입종료일",
-      ];
-      if (
-        headers.some(
-          (h, i) =>
-            sheet
-              .getRow(1)
-              .getCell(i + 1)
-              .text.trim() !== h,
-        )
-      )
-        throw Error(
-          "템플릿 열 순서가 다릅니다. 제공된 템플릿을 사용해 주세요.",
-        );
-      if (sheet.rowCount > 501)
-        throw Error("한 번에 최대 500명까지 등록할 수 있습니다.");
-      const result = [];
-      sheet.eachRow((row, n) => {
-        if (n === 1) return;
-        const keys = [
-          "name",
-          "project",
-          "company",
-          "role",
-          "email",
-          "start",
-          "end",
-        ];
-        const record = {};
-        keys.forEach((key, i) => {
-          const cell = row.getCell(i + 1);
-          record[key] =
-            cell.value instanceof Date
-              ? cell.value.toISOString().slice(0, 10)
-              : cell.text.trim();
-        });
-        result.push(record);
-      });
-      setRows(result);
-      setErrors(validate(result));
-    } catch (e) {
-      setErrors([`파일을 읽지 못했습니다. ${e.message}`]);
-    } finally {
-      setLoading(false);
-    }
-  }
-  return (
-    <Modal
-      title="인원 등록"
-      subtitle="명단을 검증한 후 등록하면 필요한 준비 작업이 자동으로 생성됩니다."
-      onClose={onClose}
-      wide
-    >
-      <div className="tabs modal-tabs">
-        <button
-          className={tab === "excel" ? "active" : ""}
-          onClick={() => {
-            setTab("excel");
-            setErrors([]);
-          }}
-        >
-          엑셀 일괄 등록
-        </button>
-        <button
-          className={tab === "manual" ? "active" : ""}
-          onClick={() => {
-            setTab("manual");
-            setErrors([]);
-          }}
-        >
-          직접 등록
-        </button>
-      </div>
-      <div className="modal-body">
-        {tab === "excel" ? (
-          <>
-            <div className="import-step">
-              <span className="step-number">01</span>
-              <div>
-                <h3>템플릿을 다운로드하고 명단을 작성하세요</h3>
-                <p>
-                  필수 항목과 날짜 형식을 확인해 주세요. 최대 500명까지 등록할
-                  수 있습니다.
-                </p>
-              </div>
-              <Btn icon={Download} onClick={onTemplate}>
-                템플릿 다운로드
-              </Btn>
-            </div>
-            <div className="import-step">
-              <span className="step-number">02</span>
-              <div>
-                <h3>작성한 파일을 업로드하세요</h3>
-                <p>
-                  등록 전 오류·중복을 확인합니다. 업로드만으로는 반영되지
-                  않습니다.
-                </p>
-              </div>
-            </div>
-            <input
-              className="visually-hidden"
-              type="file"
-              accept=".xlsx"
-              ref={fileInput}
-              onChange={(e) => {
-                readExcel(e.target.files?.[0]);
-                e.target.value = "";
-              }}
-            />
-            <button
-              className="dropzone"
-              onClick={() => fileInput.current.click()}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => {
-                e.preventDefault();
-                readExcel(e.dataTransfer.files?.[0]);
-              }}
-            >
-              <span>
-                <Upload size={25} />
-              </span>
-              <strong>
-                {loading
-                  ? "파일을 검증하고 있어요…"
-                  : filename || "파일을 끌어다 놓거나 클릭해 업로드하세요"}
-              </strong>
-              <p>XLSX 파일 · 최대 5MB</p>
-            </button>
-            {rows.length > 0 && (
-              <div className="import-preview">
-                <div>
-                  <strong>등록 미리보기 · {rows.length}명</strong>
-                  <Badge tone={errors.length ? "red" : "green"}>
-                    {errors.length ? "수정 필요" : "검증 완료"}
-                  </Badge>
-                </div>
-                <div className="table-scroll">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>성명</th>
-                        <th>프로젝트</th>
-                        <th>소속</th>
-                        <th>투입 시작</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.slice(0, 10).map((r, i) => (
-                        <tr key={i}>
-                          <td>{r.name}</td>
-                          <td>{r.project}</td>
-                          <td>{r.company}</td>
-                          <td>{r.start}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="form-grid">
-            {[
-              ["name", "성명 / 시연 표시명", "text"],
-              ["company", "소속 수행사", "text"],
-              ["email", "업무용 이메일", "email"],
-              ["role", "업무 역할", "text"],
-              ["start", "투입 시작일", "date"],
-              ["end", "투입 종료일", "date"],
-            ].map(([key, label, type]) => (
-              <label className="field" key={key}>
-                <span>{label}</span>
-                <input
-                  type={type}
-                  value={form[key]}
-                  placeholder={key === "name" ? "예: SFA-6" : ""}
-                  onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                />
-              </label>
-            ))}
-            <label className="field">
-              <span>프로젝트</span>
-              <select
-                disabled={scope !== "PMO"}
-                value={form.project}
-                onChange={(e) => setForm({ ...form, project: e.target.value })}
-              >
-                <option>SFA</option>
-                <option>그룹웨어</option>
-              </select>
-            </label>
-          </div>
-        )}
-        {errors.length > 0 && (
-          <div className="validation-errors">
-            <strong>
-              <AlertCircle size={17} />
-              입력 내용을 확인해 주세요
-            </strong>
-            {errors.slice(0, 12).map((e, i) => (
-              <p key={i}>{e}</p>
-            ))}
-          </div>
-        )}
-        <div className="notice">
-          <ShieldCheck size={17} />
-          가상 데이터로 시연해 주세요. 이 프로토타입에는 실제 인증과 서버 저장이
-          연결되어 있지 않습니다.
-        </div>
-      </div>
-      <footer>
-        <Btn onClick={onClose}>취소</Btn>
-        <Btn
-          variant="primary"
-          icon={Plus}
-          disabled={
-            loading || (tab === "excel" && (!rows.length || !!errors.length))
-          }
-          onClick={() => {
-            const result = tab === "excel" ? rows : [form];
-            const err = validate(result);
-            setErrors(err);
-            if (!err.length) onSave(result);
-          }}
-        >
-          등록 확정{tab === "excel" && rows.length ? ` · ${rows.length}명` : ""}
-        </Btn>
-      </footer>
-    </Modal>
-  );
-}
+
 function InquiryForm({
   person,
   tasks = TASKS,
@@ -5459,7 +4385,7 @@ function EditPersonForm({ person, onClose, onSave }) {
   return (
     <Modal
       title="투입 정보 변경"
-      subtitle={`${person.id} · 변경 내용과 사유가 이력에 남습니다.`}
+      subtitle={`${person.name} · 변경 내용과 사유가 이력에 남습니다.`}
       onClose={onClose}
     >
       <form
@@ -5495,8 +4421,7 @@ function EditPersonForm({ person, onClose, onSave }) {
           </label>
           <div className="notice full-field">
             <AlertCircle size={17} />
-            좌석 사용 기간과 충돌하는 날짜 변경은 먼저 좌석 배정을 조정해
-            주세요.
+            기간 변경은 관련 서류의 재확인 여부를 확인해 주세요.
           </div>
         </div>
         <footer>
@@ -5522,13 +4447,12 @@ function OffboardDialog({ person, onClose, onConfirm }) {
       <div className="modal-body">
         <div className="notice">
           <AlertTriangle size={18} />
-          확인 결과는 임시 반영됩니다. 좌석 관리의 변경 저장을 누르면 철수와
-          좌석 반납이 함께 확정되고 새 버전이 생성됩니다. 이 프로토타입이 외부
-          계정을 실제 삭제하지는 않습니다.
+          확인 결과는 인원 기록에 저장됩니다. 이 서비스가 외부 계정을 실제
+          삭제하지는 않습니다.
         </div>
         {[
           "철수 예정일과 반납 대상을 확인했습니다.",
-          "수행사의 좌석·출입 관련 반납을 확인했습니다.",
+          "수행사의 출입수단·업무 자료 반납을 확인했습니다.",
           "eGIS·두레이 계정 정리를 외부 담당자와 확인했습니다.",
         ].map((t, i) => (
           <label className="offboard-check" key={t}>

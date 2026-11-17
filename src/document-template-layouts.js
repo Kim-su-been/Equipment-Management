@@ -7,7 +7,7 @@ export const DOCUMENT_LAYOUTS = {
     version: "1.0",
     width: 794,
     height: 1123,
-    digest: "23c0517a514ae1947f362e15c3e6529be1df2d91409efdfdb651a7de561015a1",
+    digest: "ba400c887bf6f0bbd897e2193f522b188f549be6f691b35031f028ddd15f4cc2",
     fields: {
       name: {
         x: 21.094180644145208,
@@ -86,7 +86,7 @@ export const DOCUMENT_LAYOUTS = {
     version: "1.0",
     width: 794,
     height: 1123,
-    digest: "0a953372a5496d80966da3a7e775a2ad1796bd3f76f9bf7d6e88369f44c038c7",
+    digest: "6f4b884e3cfd30bcaeea4b0d183b93ddb32d467996f018d611a6b54a66071386",
     fields: {
       name: {
         x: 21.094180644145208,
@@ -162,7 +162,7 @@ export const DOCUMENT_LAYOUTS = {
       },
     },
     clauses: [
-      "수집·이용 목적: 프로젝트 참여 인원 확인, 교육 이수 및 서류 제출 관리, 계정·출입·좌석 준비와 관련 안내",
+      "수집·이용 목적: 프로젝트 참여 인원 확인, 교육 이수 및 서류 제출 관리, 계정·출입 준비와 관련 안내",
       "수집 항목: 성명, 소속 수행사, 소속 프로젝트, 업무용 연락처, 투입 예정 시작일 및 종료일",
       "보유·이용 기간: 본 예시는 운영 전 검토용 양식입니다. 실제 보유기간과 파기 기준은 주관사의 운영 정책에 따라 확정하여 고지해야 합니다.",
       "동의 거부에 관한 안내: 개인정보 수집·이용에 동의하지 않을 수 있으며, 거부 시 필요한 후속 절차와 업무 준비 가능 범위를 담당자가 안내합니다.",

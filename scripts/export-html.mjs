@@ -82,7 +82,7 @@ try {
     path.join(root, "public/fonts/Inter-LICENSE.txt"),
     "utf8",
   );
-  html += `\n<!--\nStandalone prototype export. Includes simulated AI and browser-local data.\n${notices}\n${license}\n-->\n`;
+  html += `\n<!--\nServer-connected UI export. Registration, shared state and evidence require Readyboard server/SQLite.\n${notices}\n${license}\n-->\n`;
   await mkdir(path.dirname(output), { recursive: true });
   await writeFile(output, html);
   await chmod(output, 0o644);
@@ -91,15 +91,12 @@ try {
     path.dirname(output),
     `${path.basename(output, path.extname(output))}.zip`,
   );
-  const instructions = `레디보드 HTML 미리보기
+  const instructions = `레디보드 HTML 화면 자산
 
-1. ZIP 파일의 압축을 풀어 주세요.
-2. ${path.basename(output)} 파일을 Chrome 또는 Edge에서 열어 주세요.
-3. 서버 실행이나 npm 설치 없이 화면을 확인할 수 있습니다.
-
-본인 등록·서류 작성·제출·주관사 검토·원본 ZIP 다운로드를 확인할 수 있습니다.
-본인확인·AI 가이드는 시연 기능이며 실제 인증·AI 모델·Dooray 전송은 미연동입니다.
-입력한 데이터는 현재 브라우저에 보관됩니다. 가상 정보를 사용해 주세요.
+이 파일에는 화면 자산만 포함됩니다.
+인원 등록·개인 초대 링크·서류와 상태 공유에는 레디보드 서버와 SQLite DB가 필요합니다.
+저장소의 .env.example과 README를 참고하여 npm ci, 환경변수 설정, npm run dev로 실행해 주세요.
+HTML 파일을 직접 열면 서버 연결 안내가 표시됩니다.
 `;
   const archive = makeZip([
     { name: path.basename(output), bytes: new TextEncoder().encode(html) },

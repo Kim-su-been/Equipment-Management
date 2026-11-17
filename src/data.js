@@ -49,14 +49,7 @@ export const TASKS = [
     deps: ["O03", "O05"],
     desc: "발급된 eGIS와 두레이 계정으로 접속한 후 본인 정보를 확인해 주세요.",
   },
-  {
-    id: "O07",
-    title: "프로젝트 온보딩 안내 확인",
-    owner: "member",
-    group: "온보딩",
-    deps: ["O06"],
-    desc: "업무 공간, 업무 시간, 문의 경로와 프로젝트 공통 안내를 확인해 주세요.",
-  },
+
   {
     id: "O08",
     title: "정보보안 교육",
@@ -106,33 +99,17 @@ export const TASKS = [
     id: "O13",
     title: "출입 신청·이용 가능 확인",
     owner: "admin",
-    group: "출입·좌석",
+    group: "출입 준비",
     deps: ["O12"],
     desc: "서류 확인 후 출입을 신청하고 이용 가능 여부를 기록합니다.",
   },
-  {
-    id: "O14",
-    title: "좌석 배정·위치 안내",
-    owner: "admin",
-    group: "출입·좌석",
-    deps: ["O01"],
-    desc: "공용 좌석 배치도에서 사용 기간에 맞는 좌석을 배정합니다.",
-    kind: "seat",
-  },
-  {
-    id: "O15",
-    title: "출입·업무 공간 안내 확인",
-    owner: "member",
-    group: "출입·좌석",
-    deps: ["O06", "O13"],
-    desc: "출입 가능 여부와 업무 공간 이용 안내를 확인해 주세요.",
-  },
+
   {
     id: "O16",
     title: "최종 투입 준비 확인",
     owner: "admin",
     group: "투입 확정",
-    deps: ["O07", "O08", "O09", "O12", "O13", "O14", "O15"],
+    deps: ["O03", "O05", "O06", "O08", "O09", "O12", "O13"],
     desc: "필수 준비가 완료되면 투입일을 확인하고 투입을 확정합니다.",
   },
 ];
@@ -145,6 +122,8 @@ export const STATUS = {
   ai: ["AI 검토 중", "purple"],
   fix: ["보완 요청", "red"],
   error: ["수동 확인 필요", "red"],
+  on_hold: ["투입·작업 보류", "orange"],
+  cancelled: ["요청 취소", "gray"],
 };
 export function tasksForPerson(person, customTasks = []) {
   return [
@@ -165,23 +144,34 @@ export function tasksForPerson(person, customTasks = []) {
         (task.project === "전체" || task.project === person.project) &&
         (!task.personIds || task.personIds.includes(person.id)),
     ),
-  ];
+  ].map((task) => ({ ...task, ...(person.taskOverrides?.[task.id] || {}) }));
 }
 export function requiredTasks(person, customTasks = []) {
   return tasksForPerson(person, customTasks).filter(
-    (t) => !["O01", "O12", "O16"].includes(t.id) && t.required !== false,
+    (t) =>
+      !["O01", "O07", "O12", "O14", "O15", "O16"].includes(t.id) &&
+      t.required !== false &&
+      ["계정 준비", "출입 준비", "교육", "서류"].includes(t.group),
   );
 }
 export function taskStatus(person, id, seats = {}, customTasks = []) {
   const task = tasksForPerson(person, customTasks).find((t) => t.id === id);
   if (!task) return "waiting";
+  if (person.registrationStatus === "pending_registration" && id !== "O01")
+    return "waiting";
+  if (
+    person.onboardingHold?.active &&
+    id !== "O01" &&
+    (id === "O16" || (person.tasks[id] !== "done" && !task.derived))
+  )
+    return "on_hold";
+  if (person.tasks[id] !== "done" && task.cancelled) return "cancelled";
+  if (person.tasks[id] !== "done" && task.onHold) return "on_hold";
   const statusOf = (id) => taskStatus(person, id, seats, customTasks);
-  if (id === "O14")
-    return Object.values(seats).some((s) => s?.personId === person.id)
-      ? "done"
-      : "ready";
   if (id === "O12")
-    return ["O10", "O11"].every((d) => statusOf(d) === "done")
+    return ["O10", "O11"].every((d) =>
+      ["done", "cancelled"].includes(statusOf(d)),
+    )
       ? "done"
       : ["O10", "O11"].some((d) =>
             ["review", "error", "fix"].includes(statusOf(d)),
@@ -196,7 +186,9 @@ export function taskStatus(person, id, seats = {}, customTasks = []) {
   )
     return "waiting";
   if (person.tasks[id]) return person.tasks[id];
-  return task.deps.every((d) => statusOf(d) === "done") ? "ready" : "waiting";
+  return task.deps.every((d) => ["done", "cancelled"].includes(statusOf(d)))
+    ? "ready"
+    : "waiting";
 }
 export function progress(person, seats, customTasks = []) {
   const actual = requiredTasks(person, customTasks);
@@ -209,12 +201,14 @@ export function progress(person, seats, customTasks = []) {
   );
 }
 export function isPrepared(person, seats, customTasks = []) {
-  return [
-    ...TASKS.find((t) => t.id === "O16").deps,
-    ...requiredTasks(person, customTasks)
-      .filter((t) => t.custom)
-      .map((t) => t.id),
-  ].every((id) => taskStatus(person, id, seats, customTasks) === "done");
+  if (
+    person.registrationStatus === "pending_registration" ||
+    person.onboardingHold?.active
+  )
+    return false;
+  return requiredTasks(person, customTasks).every(
+    (t) => taskStatus(person, t.id, seats, customTasks) === "done",
+  );
 }
 export function canManage(scope, person) {
   return scope === "PMO" || scope === person.project;
@@ -226,10 +220,6 @@ const range = (a, b) =>
       "done",
     ]),
   );
-const seatIds = ["A", "B"].flatMap((z) =>
-  Array.from({ length: 6 }, (_, i) => `${z}-0${i + 1}`),
-);
-export const SEAT_IDS = seatIds;
 export function seed() {
   const people = PROJECTS.flatMap((project, pi) =>
     Array.from({ length: 5 }, (_, i) => {
@@ -289,41 +279,14 @@ export function seed() {
       p.notes.O10 =
         "시연용 분석 실패입니다. 담당자가 수동으로 확인할 수 있습니다.";
   });
-  const blank = Object.fromEntries(seatIds.map((id) => [id, null]));
-  const versions = [
-    {
-      version: 1,
-      by: "PMO",
-      date: "2026.11.09 09:00",
-      reason: "공용 업무공간 초기 등록",
-      seats: { ...blank },
-    },
-  ];
-  [
-    ["A-01", "SFA-1", "SFA-담당자", "09:30"],
-    ["B-01", "GW-1", "GW-담당자", "10:00"],
-    ["B-02", "GW-5", "GW-담당자", "11:00"],
-  ].forEach(([seat, personId, by, time]) => {
-    const person = people.find((p) => p.id === personId);
-    blank[seat] = {
-      personId,
-      project: person.project,
-      start: person.start,
-      end: person.end,
-    };
-    versions.push({
-      version: versions.length + 1,
-      by,
-      date: `2026.11.09 ${time}`,
-      reason: `${personId} · ${seat} 좌석 배정`,
-      seats: structuredClone(blank),
-    });
+  people.forEach((p) => {
+    for (const id of ["O07", "O14", "O15"]) delete p.tasks[id];
+    p.registrationStatus = "registered";
+    p.displayId = p.id;
   });
   return {
     people,
     customTasks: [],
-    seats: blank,
-    versions,
     messages: [
       {
         id: "m1",
@@ -356,13 +319,6 @@ export function seed() {
     settings: { O08: "", O09: "", reminder: true },
     activity: [
       {
-        id: 1,
-        title: "GW-5 좌석 배정 완료",
-        desc: "GW-담당자 · B-02 · 배치도 v4",
-        time: "11:00",
-        type: "seat",
-      },
-      {
         id: 2,
         title: "GW-2 서류 확인 요청",
         desc: "보안서약서, 개인정보 수집·이용 동의서",
@@ -378,22 +334,6 @@ export function seed() {
       },
     ],
   };
-}
-export function validateAssignment(
-  data,
-  { seatId, personId, start, end, scope },
-) {
-  const person = data.people.find((p) => p.id === personId);
-  if (!person || !canManage(scope, person))
-    return "해당 프로젝트 인원만 배정할 수 있습니다.";
-  if (!SEAT_IDS.includes(seatId) || !start || !end || start > end)
-    return "좌석과 올바른 사용 기간을 선택해 주세요.";
-  if (start < person.start || end > person.end)
-    return "좌석 사용 기간은 인원의 투입 기간 안이어야 합니다.";
-  const target = data.seats[seatId];
-  if (target && target.personId !== personId)
-    return "이미 배정된 좌석입니다. 다른 좌석을 선택해 주세요.";
-  return "";
 }
 export function evidenceStatus(person, id, seats) {
   return ["O08", "O09"].includes(id)

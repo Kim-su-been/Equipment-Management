@@ -18,6 +18,11 @@ export function createProjectTask(data, scope, form) {
     );
   if (!["admin", "member"].includes(form.owner))
     throw new Error("작업의 수행 주체를 선택해 주세요.");
+  if (
+    form.group &&
+    !["계정 준비", "출입 준비", "교육", "서류", "기타"].includes(form.group)
+  )
+    throw new Error("준비 작업 분류를 확인해 주세요.");
   const deps = form.dependency ? [form.dependency] : [];
   if (deps.some((id) => !TASKS.some((t) => t.id === id && id !== "O16")))
     throw new Error("유효한 선행 작업을 선택해 주세요.");
@@ -55,7 +60,7 @@ export function createProjectTask(data, scope, form) {
     title,
     desc,
     owner: form.owner,
-    group: "추가 작업",
+    group: form.group || "계정 준비",
     custom: true,
     project,
     personIds,

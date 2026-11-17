@@ -37,18 +37,6 @@ export const TASK_EXPORTS = {
       ["출입 종료일", "end"],
     ],
   },
-  O14: {
-    title: "좌석 배정",
-    columns: [
-      ["성명", "name"],
-      ["소속", "company"],
-      ["프로젝트", "project"],
-      ["연락처", "phone"],
-      ["사용 시작일", "start"],
-      ["사용 종료일", "end"],
-      ["배정 좌석", "seat"],
-    ],
-  },
 };
 export function taskExportRows(data, scope, selection) {
   const people = authorizedPeople(
@@ -80,14 +68,7 @@ export function taskExportRows(data, scope, selection) {
     template,
     rows: people.map((p) =>
       Object.fromEntries(
-        template.columns.map(([label, key]) => [
-          label,
-          key === "seat"
-            ? Object.entries(data.seats).find(
-                ([, v]) => v?.personId === p.id,
-              )?.[0] || "미배정"
-            : p[key] || "미입력",
-        ]),
+        template.columns.map(([label, key]) => [label, p[key] || "미입력"]),
       ),
     ),
   };

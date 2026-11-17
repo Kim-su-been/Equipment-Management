@@ -1,0 +1,452 @@
+/* Shared server workflows retain the white canvas and Woori blue palette. */
+.access-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: #f6faff;
+  color: #123f6d;
+}
+.access-brand {
+  background: linear-gradient(145deg, #123f6d, #0067ac);
+  padding: 10vh 8vw;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 22px;
+}
+.access-brand h1 {
+  font-size: 46px;
+  letter-spacing: -2px;
+}
+.access-brand h2 {
+  font-size: 32px;
+  line-height: 1.5;
+}
+.access-brand p {
+  color: #daefff;
+  line-height: 1.8;
+}
+.access-brand .brand-characters {
+  max-width: 450px;
+  margin-top: 30px;
+}
+.access-panel {
+  padding: 10vh 6vw;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 24px;
+  background: white;
+}
+.access-panel form,
+.access-continue form {
+  display: grid;
+  gap: 20px;
+}
+.access-panel .tabs {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.access-panel .tabs button {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.access-panel h2,
+.access-continue h2 {
+  font-size: 25px;
+}
+.access-panel p,
+.access-continue p {
+  line-height: 1.8;
+}
+.access-page input,
+.access-page select,
+.invitation-page input,
+.import-flow input:not([type="checkbox"]),
+.import-flow select,
+.invite-manager input,
+.invite-manager select {
+  padding: 11px 12px;
+  border: 1px solid #bbd0e4;
+  background: white;
+  border-radius: 8px;
+  color: #173d60;
+  font: inherit;
+  min-width: 0;
+  width: 100%;
+}
+.access-loading {
+  text-align: center;
+  padding: 80px;
+  color: #123f6d;
+}
+.invitation-page {
+  background: #f7faff;
+  min-height: 100vh;
+  padding: 30px 5vw 70px;
+  color: #123f6d;
+}
+.invitation-page > header {
+  max-width: 1050px;
+  margin: 0 auto 30px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.invitation-logo {
+  background: #0067ac;
+  border-radius: 12px;
+  color: white;
+  font-weight: 800;
+  padding: 10px 16px;
+}
+.invitation-form {
+  max-width: 1050px;
+  margin: auto;
+  overflow: hidden;
+}
+.invitation-form > .card-heading {
+  padding: 30px;
+  background: #edf7fe;
+}
+.invitation-form .card-heading .brand-characters {
+  width: 160px;
+}
+.invitation-form h1 {
+  font-size: 28px;
+  margin: 10px 0;
+}
+.invitation-form h2 {
+  font-size: 19px;
+  margin: 12px 0 20px;
+}
+.invitation-form footer {
+  padding: 24px 30px;
+  border-top: 1px solid #dce8f4;
+  text-align: right;
+}
+.invitation-form .form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+}
+.invitation-form .field span {
+  display: block;
+  margin-bottom: 8px;
+}
+.registration-basic {
+  padding: 22px;
+  border: 1px solid #c5def0;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  background: #f7fbff;
+}
+.registration-basic dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  margin: 24px 0;
+}
+.registration-basic dt {
+  font-size: 13px;
+  color: #627c96;
+  margin-bottom: 6px;
+}
+.registration-basic dd {
+  color: #123f6d;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+.registration-basic .text-link {
+  font-size: 14px;
+}
+.registration-next {
+  display: flex;
+  gap: 22px;
+  flex-wrap: wrap;
+  margin: 26px 0;
+}
+.registration-next span {
+  display: flex;
+  gap: 8px;
+}
+.invitation-error {
+  max-width: 700px;
+  padding: 50px;
+  margin: 10vh auto;
+  text-align: center;
+  display: grid;
+  gap: 20px;
+  justify-items: center;
+}
+.import-flow,
+.invite-manager {
+  padding: 26px;
+  display: grid;
+  gap: 22px;
+}
+.import-controls {
+  display: flex;
+  gap: 20px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+.import-controls label {
+  display: grid;
+  gap: 8px;
+  flex: 1;
+  min-width: 200px;
+}
+.mapping-notice {
+  background: #edf6ff;
+  border-left: 4px solid #0067ac;
+  padding: 18px;
+  border-radius: 8px;
+  line-height: 1.7;
+}
+.mapping-notice p {
+  margin: 6px 0;
+}
+.mapping-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(140px, 1fr));
+  gap: 16px;
+}
+.mapping-grid label {
+  display: grid;
+  gap: 8px;
+  font-weight: 600;
+}
+.source-preview summary {
+  cursor: pointer;
+  color: #0067ac;
+  font-weight: 600;
+  padding: 10px;
+}
+.import-table-wrap {
+  overflow: auto;
+  max-height: 450px;
+  border: 1px solid #d4e3f1;
+  border-radius: 10px;
+}
+.import-table {
+  min-width: 1000px;
+}
+.import-table td {
+  vertical-align: top;
+}
+.import-table input {
+  min-width: 100px;
+}
+.import-table select {
+  min-width: 180px;
+}
+.import-table small {
+  display: block;
+  max-width: 200px;
+  white-space: normal;
+  color: #8c5b0c;
+  margin-top: 8px;
+}
+.import-table .excluded {
+  opacity: 0.5;
+}
+.review-confirm {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  white-space: normal;
+  line-height: 1.6;
+}
+.review-confirm input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: #0067ac;
+}
+.import-table .review-confirm {
+  margin-top: 10px;
+  font-size: 12px;
+  min-width: 180px;
+}
+.form-error {
+  border: 1px solid #efb4b4;
+  color: #b52828;
+  background: #fff3f3;
+  padding: 16px;
+  border-radius: 8px;
+  line-height: 1.6;
+}
+.import-flow .form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.invitation-card {
+  border: 1px solid #cce0f1;
+  border-radius: 12px;
+  padding: 22px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 15px;
+  background: #f9fcff;
+}
+.invitation-card h3 {
+  font-size: 19px;
+}
+.invitation-card h3 small {
+  font-size: 13px;
+  font-weight: 500;
+  color: #637e98;
+}
+.invitation-card p {
+  margin: 8px 0;
+  color: #54708d;
+}
+.invitation-card > small {
+  grid-column: 1/-1;
+  color: #5f7491;
+}
+.invitation-actions {
+  display: flex;
+  gap: 8px;
+  align-items: start;
+}
+.registration-pending,
+.registration-done {
+  display: block;
+  font-weight: 700;
+  font-size: 12px;
+  margin-bottom: 8px;
+  color: #976100;
+}
+.registration-done {
+  color: #087d71;
+}
+.registration-banner {
+  margin: 18px 26px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.registration-banner p {
+  margin-top: 7px;
+  line-height: 1.7;
+}
+.legacy-migration {
+  padding: 22px;
+  border: 1px solid #c5dceb;
+  border-radius: 12px;
+  background: #edf6ff;
+  margin-bottom: 25px;
+  line-height: 1.7;
+}
+.legacy-migration button {
+  margin-top: 12px;
+}
+.server-save-status {
+  padding: 8px 30px;
+  background: #eff8ff;
+  color: #3e678b;
+  font-size: 12px;
+  display: flex;
+  gap: 14px;
+}
+.success-text {
+  color: #087d71;
+}
+.modal .import-flow ~ * {
+  min-width: 0;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.form-error[role="alert"] {
+  color: #b52828;
+}
+.registration-basic .notice {
+  margin-top: 20px;
+}
+.invitation-page .notice.error,
+.access-page .notice.error {
+  color: #a22626;
+  background: #fff1f1;
+  padding: 16px;
+  border-radius: 8px;
+  line-height: 1.7;
+}
+.access-page .btn.primary,
+.invitation-page .btn.primary,
+.import-flow .btn.primary,
+.invite-manager .btn.primary {
+  background: #0067ac;
+  color: #fff;
+  border-color: #0067ac;
+}
+.access-page .eyebrow {
+  color: #c4e6ff;
+}
+.access-continue {
+  padding: 20px;
+}
+.access-panel .access-continue {
+  padding: 0;
+}
+.invitation-form .online-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 24px;
+}
+.invitation-form .online-check input {
+  width: 18px;
+  height: 18px;
+}
+.invitation-page input[type="date"]:read-only {
+  background: #f0f4f8;
+}
+@media (max-width: 850px) {
+  .access-page {
+    grid-template-columns: 1fr;
+  }
+  .access-brand {
+    padding: 40px 30px;
+  }
+  .access-brand h2 {
+    font-size: 24px;
+  }
+  .access-brand .brand-characters {
+    max-width: 260px;
+  }
+  .access-panel {
+    padding: 36px 24px;
+  }
+  .mapping-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .invitation-page {
+    padding: 22px 12px;
+  }
+  .invitation-card {
+    grid-template-columns: 1fr;
+  }
+  .invitation-form .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .registration-banner {
+    flex-direction: column;
+    align-items: start;
+  }
+  .invitation-actions {
+    flex-wrap: wrap;
+  }
+  .import-flow,
+  .invite-manager {
+    padding: 16px;
+  }
+}

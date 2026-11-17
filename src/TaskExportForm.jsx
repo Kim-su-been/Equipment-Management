@@ -49,8 +49,8 @@ export default function TaskExportForm({
       >
         <div className="modal-body">
           <div className="notice">
-            eGIS·Dooray·출입·좌석별 예시 양식입니다. 실제 사내 서식을 확보하면
-            같은 등록 정보에 양식을 연결할 수 있습니다.
+            eGIS·Dooray·출입별 예시 양식입니다. 실제 사내 서식을 확보하면 같은
+            등록 정보에 양식을 연결할 수 있습니다.
           </div>
           <label className="field">
             <span>적용 프로젝트</span>
