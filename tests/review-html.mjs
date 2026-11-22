@@ -90,6 +90,14 @@ try {
   await page.getByLabel("메일 별도 신규 기록 확인").check();
   await page.getByRole("button", { name: "승인 후 반영", exact: true }).click();
   await page.locator(".mail-applied-result").waitFor();
+  assert.ok(
+    (
+      await page
+        .locator(".mail-change-overview tbody tr")
+        .filter({ hasText: "투입일" })
+        .textContent()
+    ).includes("미정"),
+  );
   const final = await page.evaluate(
       async () => await (await fetch("/api/state")).json(),
     ),

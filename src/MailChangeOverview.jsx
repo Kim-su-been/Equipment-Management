@@ -34,7 +34,10 @@ export default function MailChangeOverview({
   recommended,
   data,
 }) {
-  const before = request.result?.before || selected || recommended,
+  const before =
+      edit.type === "new"
+        ? null
+        : request.result?.before || selected || recommended,
     after = request.result?.after;
   const fields = [];
   if (edit.type === "new")
