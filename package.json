@@ -19,7 +19,8 @@
     "test:html": "node tests/review-html.mjs && node tests/offline-html.mjs",
     "build:offline": "node scripts/build-offline.mjs",
     "build:vercel": "npm run build:offline",
-    "test:deployment": "node tests/static-deployment.mjs"
+    "test:deployment": "node tests/static-deployment.mjs",
+    "test:work-ux": "node tests/work-ux.mjs"
   },
   "dependencies": {
     "ajv": "^8.20.0",

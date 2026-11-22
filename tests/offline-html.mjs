@@ -1,3 +1,8 @@
+import {
+  openDemoSettings,
+  closeDemoSettings,
+  chooseDemoRole,
+} from "./demo-controls.mjs";
 import { chromium, expect } from "@playwright/test";
 import assert from "node:assert/strict";
 import { readFile, mkdir } from "node:fs/promises";
@@ -50,9 +55,7 @@ const state = async () => {
   return r.data.state;
 };
 const role = async (value, pid) => {
-  await page.getByLabel("검토 화면 역할").selectOption(value);
-  if (value === "member" && pid)
-    await page.getByLabel("시연 수행사 인원").selectOption(pid);
+  await chooseDemoRole(page, value, pid);
   await expect(page.locator(".sidebar")).toBeVisible();
 };
 const roster = async () => {
@@ -138,6 +141,7 @@ try {
   );
   assert.equal((await call(`/api/invites/${oldToken}`)).status, 410);
   await close();
+  await openDemoSettings(page);
   await page
     .getByRole("button", { name: "초대 링크 열기", exact: true })
     .click();
@@ -351,6 +355,7 @@ try {
   // Backup includes uploaded binary originals. Reset and restore from the actual downloaded JSON.
   await role("pmo");
   downloadPromise = page.waitForEvent("download");
+  await openDemoSettings(page);
   await page.getByRole("button", { name: "시연 백업", exact: true }).click();
   downloaded = await downloadPromise;
   await downloaded.saveAs("artifacts/offline-backup.json");
@@ -365,6 +370,7 @@ try {
   await page.getByRole("button", { name: "초기화 실행", exact: true }).click();
   await expect(page.locator(".sidebar")).toBeVisible();
   await expect.poll(async () => (await state()).people.length).toBe(11);
+  await openDemoSettings(page);
   await page
     .getByLabel("시연 백업 불러오기")
     .setInputFiles("artifacts/offline-backup.json");
@@ -377,6 +383,7 @@ try {
     return await r.text();
   }, certificateId);
   assert.equal(cert, "%PDF-1.4 offline certificate");
+  await closeDemoSettings(page);
   await page.reload();
   await expect(page.locator(".sidebar")).toBeVisible();
   assert.equal((await state()).people.length, 13);

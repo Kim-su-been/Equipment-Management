@@ -102,6 +102,14 @@ import {
 import BrandCharacters from "./BrandCharacters.jsx";
 import useMailInbox from "./useMailInbox.js";
 import MailReviewPage from "./MailReviewPage.jsx";
+import {
+  WorkDashboard,
+  RosterPage,
+  TaskBoard,
+  MemberDashboard,
+  Preparation,
+} from "./WorkPages.jsx";
+import { personState, personIdentity, horizonDays } from "./work-summary.js";
 import { reschedulePreparation } from "./personnel-workflow.js";
 
 const NAV = [
@@ -110,7 +118,7 @@ const NAV = [
   ["tasks", "준비 작업", ClipboardList],
   ["reviews", "교육·서류 검토", FileCheck2],
   ["messages", "문의·알림", MessageSquare],
-  ["mail", "AI 메일 요청 검토", Mail],
+  ["mail", "받은편지함", Mail],
 ];
 const MEMBER_NAV = [
   ["dashboard", "나의 투입 준비", LayoutDashboard],
@@ -278,6 +286,10 @@ export default function App({ initialState, actor, onLogout }) {
     actor.personId || initialState.people[0]?.id || "",
   );
   const [page, setPage] = useState("dashboard");
+  const [peopleQuery, setPeopleQuery] = useState({});
+  const [settingsDraft, setSettingsDraft] = useState({
+    ...initialState.settings,
+  });
   const [mailReviewKey, setMailReviewKey] = useState(0);
   const [mailReviewIds, setMailReviewIds] = useState(null);
   const [modal, setModal] = useState(null),
@@ -338,8 +350,10 @@ export default function App({ initialState, actor, onLogout }) {
     };
   }, [modal, mobile]);
   const go = (id, reviewIds = null) => {
+    if (id === "settings") setSettingsDraft({ ...data.settings });
     if (id === "mail") setMailReviewIds(reviewIds);
     if (id === "mail") setMailReviewKey((v) => v + 1);
+    setPeopleQuery({});
     setPage(id);
     setSearch("");
     setStatusFilter("전체 상태");
@@ -417,15 +431,10 @@ export default function App({ initialState, actor, onLogout }) {
     const current = taskStatus(p, id, undefined);
     if (!["ready", "progress"].includes(current))
       return notify("선행 작업을 먼저 완료해 주세요.");
-    const confirmationDate = p.selfRegistered ? todayLocal() : TODAY;
-    if (id === "O16" && p.start > confirmationDate)
-      return notify(
-        `투입 시작일 ${fmt(p.start)}부터 확정할 수 있습니다. 확인 기준일은 ${fmt(confirmationDate)}입니다.`,
-      );
     mutate((d) => {
       const person = d.people.find((x) => x.id === p.id);
       person.tasks[id] = status;
-      if (id === "O16") person.lifecycle = "투입 중";
+
       person.history.unshift({
         text: `${task.title} 완료`,
         date: new Date().toLocaleString("ko-KR"),
@@ -686,7 +695,7 @@ export default function App({ initialState, actor, onLogout }) {
       const list = scoped.filter((p) => !isPrepared(p, undefined));
       answer = `현재 조회 범위 ${admin ? scope : member.name}에서 준비 미완료 인원은 ${list.length}명입니다. ${list
         .slice(0, 4)
-        .map((p) => `${p.id}(${progress(p, undefined)}%)`)
+        .map((p) => `${p.name}(${progress(p, undefined)}%)`)
         .join(
           ", ",
         )}${list.length > 4 ? " 등이 있습니다." : "입니다."}\n계정 발급 대기, 서류 확인 요청, 출입 준비 대기 순으로 확인해 보세요. 이 답변은 시연 데이터에서 생성한 고정 규칙 안내입니다.\n근거: 현재 명단·작업 현황 · 기준일 2026.11.09`;
@@ -745,29 +754,10 @@ export default function App({ initialState, actor, onLogout }) {
     a.click();
     setTimeout(() => URL.revokeObjectURL(u), 1000);
   }
-  function filteredPeople() {
-    return scoped.filter(
-      (p) =>
-        (projectFilter === "전체 프로젝트" || p.project === projectFilter) &&
-        (!search ||
-          [p.id, p.displayId, p.name, p.company, p.email, p.role]
-            .join(" ")
-            .toLowerCase()
-            .includes(search.toLowerCase())) &&
-        (statusFilter === "전체 상태" ||
-          (statusFilter === "본인 등록 대기"
-            ? p.registrationStatus === "pending_registration"
-            : statusFilter === "등록 완료"
-              ? p.registrationStatus === "registered"
-              : statusFilter === "준비 미완료"
-                ? !isPrepared(p, undefined)
-                : statusFilter === "준비 충족"
-                  ? isPrepared(p, undefined)
-                  : statusFilter === p.lifecycle)),
-    );
-  }
   function actionFor(p, t, compact = false) {
-    const status = taskStatus(p, t.id, undefined),
+    const status = ["O08", "O09"].includes(t.id)
+        ? evidenceStatus(p, t.id)
+        : taskStatus(p, t.id, undefined),
       own = admin
         ? t.owner === "admin" && canEdit(p)
         : t.owner === "member" && p.id === member.id;
@@ -779,11 +769,15 @@ export default function App({ initialState, actor, onLogout }) {
         >
           {admin
             ? "상세 보기"
-            : status === "done"
+            : status === "done" || status === "review" || status === "ai"
               ? "제출본 보기"
               : status === "waiting"
-                ? "안내 보기"
-                : "시작하기"}
+                ? "대기 사유 보기"
+                : status === "fix"
+                  ? "보완·재제출"
+                  : t.kind === "education"
+                    ? "수료증 제출"
+                    : "서류 작성"}
           <ChevronRight size={14} />
         </button>
       );
@@ -808,7 +802,11 @@ export default function App({ initialState, actor, onLogout }) {
           variant="small"
           onClick={() => setModal({ type: "task", id: p.id, task: t.id })}
         >
-          {status === "progress" ? "완료 확인" : "작업 시작"}
+          {t.id === "O16"
+            ? "최종 준비 확인"
+            : status === "progress"
+              ? "완료 확인"
+              : "작업 시작"}
           <ArrowRight size={13} />
         </Btn>
       );
@@ -826,129 +824,6 @@ export default function App({ initialState, actor, onLogout }) {
             ? "처리 대기"
             : "상대방 처리"}
       </span>
-    );
-  }
-  function PersonTable({ people = filteredPeople(), simple = false }) {
-    return (
-      <div className="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>인원 / 소속</th>
-              <th>프로젝트</th>
-              <th>투입 기간</th>
-              <th>준비율</th>
-              {!simple && <th>교육 / 서류</th>}
-              <th>등록 / 투입 상태</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {people.map((p) => (
-              <tr
-                key={p.id}
-                onClick={() => openPerson(p)}
-                tabIndex={0}
-                onKeyDown={(e) => e.key === "Enter" && openPerson(p)}
-              >
-                <td>
-                  <div className="person-cell">
-                    <Avatar person={p} />
-                    <div>
-                      <strong>{p.name}</strong>
-                      {p.name !== p.id && (
-                        <span className="person-identifier">
-                          {p.displayId || p.id}
-                        </span>
-                      )}
-                      <span>
-                        {[p.company, p.role].filter(Boolean).join(" · ")}
-                      </span>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <span
-                    className={cx(
-                      "project-label",
-                      p.project === "SFA" ? "" : "violet",
-                    )}
-                  >
-                    {p.project}
-                  </span>
-                </td>
-                <td>
-                  <span className="date-text">
-                    {fmt(p.start)}
-                    <br />
-                    <span className="muted">~ {fmt(p.end)}</span>
-                  </span>
-                </td>
-                <td>
-                  <Progress value={progress(p, undefined)} />
-                </td>
-                {!simple && (
-                  <td>
-                    <div className="two-status">
-                      <span>
-                        <GraduationCap size={14} />
-                        {
-                          ["O08", "O09"].filter(
-                            (id) => taskStatus(p, id, undefined) === "done",
-                          ).length
-                        }
-                        /2
-                      </span>
-                      <span>
-                        <FileText size={14} />
-                        {
-                          ["O10", "O11"].filter(
-                            (id) => taskStatus(p, id, undefined) === "done",
-                          ).length
-                        }
-                        /2
-                      </span>
-                    </div>
-                  </td>
-                )}
-                <td>
-                  <span
-                    className={
-                      p.registrationStatus === "pending_registration"
-                        ? "registration-pending"
-                        : "registration-done"
-                    }
-                  >
-                    {p.registrationStatus === "pending_registration"
-                      ? "본인 등록 대기"
-                      : "등록 완료"}
-                  </span>
-                  <Badge
-                    tone={
-                      p.lifecycle === "투입 중"
-                        ? "green"
-                        : p.lifecycle === "철수 완료"
-                          ? "gray"
-                          : "blue"
-                    }
-                  >
-                    {p.lifecycle}
-                  </Badge>
-                </td>
-                <td>
-                  <ChevronRight size={17} className="muted" />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {!people.length && (
-          <Empty
-            title="조건에 맞는 인원이 없어요"
-            desc="검색어나 필터를 변경해 주세요."
-          />
-        )}
-      </div>
     );
   }
   function TaskRows({ person, filter = "전체 작업" }) {
@@ -1023,546 +898,101 @@ export default function App({ initialState, actor, onLogout }) {
       </div>
     );
   }
-  function Stats() {
-    const ready = scoped.filter((p) => isPrepared(p, undefined)).length;
-    const cards = [
-      {
-        label: "전체 투입 인원",
-        value: scoped.length,
-        unit: "명",
-        desc: `${admin && scope === "PMO" ? "2개 프로젝트" : "선택 프로젝트"} 통합 관리`,
-        icon: Users,
-        color: "green",
-        action: () => go("people"),
-      },
-      {
-        label: "투입 준비 완료",
-        value: ready,
-        unit: "명",
-        desc: `전체 인원의 ${Math.round((ready / scoped.length) * 100) || 0}% 준비 충족`,
-        icon: CheckCircle2,
-        color: "mint",
-        action: () => {
-          go("people");
-          setStatusFilter("준비 충족");
-        },
-      },
-      {
-        label: "확인 요청",
-        value: reviewCount,
-        unit: "건",
-        desc: "교육·서류 검토가 필요해요",
-        icon: FileCheck2,
-        color: "orange",
-        action: () => {
-          go("reviews");
-          setReviewTab("확인 요청");
-        },
-      },
-      {
-        label: "준비 미완료",
-        value: scoped.length - ready,
-        unit: "명",
-        desc: "아직 진행 중인 작업이 있어요",
-        icon: Clock,
-        color: "violet",
-        action: () => {
-          go("people");
-          setStatusFilter("준비 미완료");
-        },
-      },
-    ];
-    return (
-      <div className="stats">
-        {cards.map((c) => (
-          <button className="stat-card" key={c.label} onClick={c.action}>
-            <div className="stat-top">
-              <span>{c.label}</span>
-              <span className={cx("stat-icon", c.color)}>
-                <c.icon size={19} />
-              </span>
-            </div>
-            <div className="stat-value">
-              {c.value}
-              <small>{c.unit}</small>
-              <ArrowUpRight size={18} />
-            </div>
-            <p>{c.desc}</p>
-          </button>
-        ))}
-      </div>
-    );
+  function openWorkTask(p, id) {
+    const task = personTasks(p).find((t) => t.id === id);
+    if (!task) return openPerson(p);
+    setModal({
+      type:
+        task.kind === "education" || task.kind === "document"
+          ? "document"
+          : "task",
+      id: p.id,
+      task: id,
+    });
+  }
+  function invitePeople(ids) {
+    if (actor.scope !== "PMO")
+      return openPerson(
+        data.people.find((p) => p.id === (Array.isArray(ids) ? ids[0] : ids)),
+      );
+    setModal({
+      type: "invitations",
+      ...(Array.isArray(ids) ? { ids } : { id: ids }),
+    });
+  }
+  function showPeople(query = {}) {
+    go("people");
+    setPeopleQuery(query);
   }
   function Dashboard() {
-    const needs = scoped.filter((p) => !isPrepared(p, undefined)).slice(0, 4);
     return (
-      <>
-        <section className="page-heading dashboard-welcome">
-          <div className="welcome-copy">
-            <div className="eyebrow">TOGETHER, READY FOR YOUR NEXT</div>
-            <p className="welcome-kicker">함께 준비하는 프로젝트의 첫 시작</p>
-            <h1 className="campaign-title">
-              한눈에 보는 투입 현황
-              <span className="heading-dot" />
-            </h1>
-            <p>새로운 시작의 모든 준비를, 레디보드와 차근차근 연결해 보세요.</p>
-          </div>
-          <div className="welcome-visual">
-            <BrandCharacters label="함께 프로젝트의 시작을 준비하는 캐릭터들" />
-          </div>
-          <Btn
-            icon={actor.scope === "PMO" ? Upload : Plus}
-            variant="primary"
-            onClick={() =>
-              setModal(
-                actor.scope === "PMO"
-                  ? { type: "planImport" }
-                  : { type: "register", requestId: crypto.randomUUID() },
+      <WorkDashboard
+        data={data}
+        people={scoped}
+        mailRequests={mail.inbox?.requests || []}
+        scope={scope}
+        canImport={actor.scope === "PMO"}
+        onPeople={showPeople}
+        onReviews={() => {
+          go("reviews");
+          setReviewTab("확인 요청");
+        }}
+        onMail={() =>
+          go(
+            "mail",
+            (mail.inbox?.requests || [])
+              .filter(
+                (r) =>
+                  r.status === "pending" &&
+                  (scope === "PMO" || r.payload.project === scope),
               )
-            }
-          >
-            {actor.scope === "PMO" ? "인력계획서 불러오기" : "인원 등록"}
-          </Btn>
-          <div className="brand-one-motif" aria-hidden="true">
-            <i />
-            <b />
-          </div>
-        </section>
-        <div className="date-strip">
-          <div>
-            <CalendarDays size={15} />
-            <strong>
-              {new Date().toLocaleDateString("ko-KR", {
-                timeZone: "Asia/Seoul",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-                weekday: "long",
-              })}
-            </strong>
-            <span className="muted">현황 기준일</span>
-          </div>
-          <span className="live">
-            <i /> 모든 프로젝트 현황을 확인하고 있어요
-          </span>
-        </div>
-        <Stats />
-        <div className="overview-grid">
-          <section className="card project-card">
-            <div className="card-heading">
-              <div>
-                <h2>프로젝트별 준비 현황</h2>
-                <p>투입에 필요한 준비가 얼마나 완료되었나요?</p>
-              </div>
-              <span className="subtle-tag">
-                {scope === "PMO" ? "전체 프로젝트" : scope}
-              </span>
-            </div>
-            <div className="project-list">
-              {(scope === "PMO" ? ["SFA", "그룹웨어"] : [scope]).map(
-                (project, i) => {
-                  const ps = scoped.filter((p) => p.project === project);
-                  const avg = Math.round(
-                    ps.reduce((v, p) => v + progress(p, undefined), 0) /
-                      (ps.length || 1),
-                  );
-                  return (
-                    <button
-                      className="project-overview"
-                      key={project}
-                      onClick={() => {
-                        go("people");
-                        setProjectFilter(project);
-                      }}
-                    >
-                      <div
-                        className={cx(
-                          "project-symbol",
-                          project === "그룹웨어" && "purple",
-                        )}
-                      >
-                        <Layers size={23} />
-                      </div>
-                      <div className="project-info">
-                        <div>
-                          <strong>{project}</strong>
-                          <Badge tone="blue">진행 중</Badge>
-                        </div>
-                        <p>
-                          <Users size={12} /> {ps.length}명 <span>·</span>{" "}
-                          {project === "SFA" ? "SFA" : "GW"}-담당자
-                        </p>
-                        <div className="project-progress">
-                          <span>
-                            <i style={{ width: `${avg}%` }} />
-                          </span>
-                          <strong>
-                            {avg}
-                            <small>%</small>
-                          </strong>
-                        </div>
-                      </div>
-                      <ChevronRight size={17} />
-                    </button>
-                  );
-                },
-              )}
-            </div>
-            <div className="project-foot">
-              <ShieldCheck size={16} />
-              <span>계정 · 출입 · 교육 · 서류 준비 상태를 함께 확인해요.</span>
-            </div>
-          </section>
-          <section className="card needs-card">
-            <div className="card-heading">
-              <div>
-                <h2>
-                  지금 확인이 필요해요{" "}
-                  <span className="count-pill">{needs.length}</span>
-                </h2>
-                <p>투입 준비가 남은 인원을 먼저 확인하세요.</p>
-              </div>
-              <button
-                className="icon-btn"
-                aria-label="미완료 전체 보기"
-                onClick={() => {
-                  go("people");
-                  setStatusFilter("준비 미완료");
-                }}
-              >
-                <ArrowUpRight size={19} />
-              </button>
-            </div>
-            <div>
-              {needs.map((p) => (
-                <button
-                  className="needs-row"
-                  key={p.id}
-                  onClick={() => openPerson(p)}
-                >
-                  <Avatar person={p} small />
-                  <div>
-                    <strong>
-                      {p.id}
-                      <span>{p.project}</span>
-                    </strong>
-                    <p>
-                      {["O10", "O11"].some((id) =>
-                        ["review", "error"].includes(
-                          taskStatus(p, id, undefined),
-                        ),
-                      )
-                        ? "서류 확인 요청을 확인해 주세요"
-                        : Object.values(p.tasks).includes("ai")
-                          ? "제출한 서류의 AI 검토가 진행 중이에요"
-                          : taskStatus(p, "O06", undefined) === "waiting"
-                            ? "주관사 계정 준비를 기다리고 있어요"
-                            : "계정·출입·교육·서류 준비를 진행해 주세요"}
-                    </p>
-                  </div>
-                  <ChevronRight size={15} />
-                </button>
-              ))}
-              {!needs.length && (
-                <Empty
-                  title="모든 준비가 완료되었어요"
-                  desc="새로운 투입 인원을 등록해 보세요."
-                />
-              )}
-            </div>
-          </section>
-        </div>
-        <div className="ai-banner">
-          <div className="ai-banner-character">
-            <BrandCharacters focus="guide" />
-          </div>
-          <div>
-            <span>YOUR PMO ASSISTANT</span>
-            <h3>복잡한 현황 파악, AI에게 물어보세요.</h3>
-            <p>
-              준비가 늦어지는 인원부터 다음 조치까지, 필요한 정보를 한 번에.
-            </p>
-          </div>
-          <Btn
-            onClick={() => {
-              setAi(true);
-              askAI("현재 준비 미완료 현황을 요약해 줘");
-            }}
-          >
-            AI 현황 브리핑 <ArrowUpRight size={15} />
-          </Btn>
-          <div className="banner-orbit" />
-        </div>
-        <div className="bottom-grid">
-          <section className="card">
-            <div className="card-heading">
-              <div>
-                <h2>투입 인원 현황</h2>
-                <p>인원별 준비 상태와 투입 일정을 확인하세요.</p>
-              </div>
-              <button className="text-link" onClick={() => go("people")}>
-                전체 보기
-                <ArrowRight size={14} />
-              </button>
-            </div>
-            <PersonTable people={scoped.slice(0, 4)} simple />
-          </section>
-          <section className="card activity-card">
-            <div className="card-heading">
-              <div>
-                <h2>최근 활동</h2>
-                <p>워크스페이스의 새로운 소식</p>
-              </div>
-              <History size={18} className="muted" />
-            </div>
-            <div className="activity-list">
-              {data.activity
-                .filter(
-                  (a) =>
-                    scope === "PMO" ||
-                    a.title.includes(scope === "SFA" ? "SFA" : "GW") ||
-                    a.desc.includes(scope === "SFA" ? "SFA" : "GW"),
-                )
-                .slice(0, 4)
-                .map((a, i) => (
-                  <div className="activity" key={a.id}>
-                    <span
-                      className={cx(
-                        "activity-icon",
-                        a.type === "document" ? "purple" : "green",
-                      )}
-                    >
-                      {a.type === "document" ? (
-                        <FileText size={15} />
-                      ) : (
-                        <Users size={15} />
-                      )}
-                    </span>
-                    <div>
-                      <strong>{a.title}</strong>
-                      <p>{a.desc}</p>
-                      <time>{a.time}</time>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </section>
-        </div>
-      </>
+              .map((r) => r.id),
+          )
+        }
+        onTasks={() => go("tasks")}
+        onOpen={openPerson}
+        onTask={openWorkTask}
+        onInvite={invitePeople}
+        onLifecycle={(p) => setModal({ type: "editPerson", id: p.id })}
+        onImport={() => setModal({ type: "planImport" })}
+      />
     );
   }
   function People() {
     return (
       <>
-        <PageHeading
-          title="인원 명단"
-          desc="프로젝트 인원과 투입 준비 상태를 한곳에서 관리하세요."
-          actions={
-            <>
-              <Btn
-                icon={FileText}
-                onClick={() => setModal({ type: "taskExport" })}
-              >
-                작업 양식
-              </Btn>
-              <Btn icon={Download} onClick={() => workbook("export")}>
-                엑셀 내보내기
-              </Btn>
-              {actor.scope === "PMO" && (
-                <>
-                  <Btn
-                    icon={Upload}
-                    variant="primary"
-                    onClick={() => setModal({ type: "planImport" })}
-                  >
-                    인력계획서 불러오기
-                  </Btn>
-                  <Btn
-                    icon={Link2}
-                    onClick={() => setModal({ type: "invitations" })}
-                  >
-                    개인별 초대 링크
-                  </Btn>
-                </>
-              )}
-              <Btn
-                icon={Plus}
-                onClick={() =>
-                  setModal({ type: "register", requestId: crypto.randomUUID() })
-                }
-              >
-                인원 등록
-              </Btn>
-            </>
+        <RosterPage
+          data={data}
+          people={scoped}
+          scope={scope}
+          canImport={actor.scope === "PMO"}
+          canInvite={actor.scope === "PMO"}
+          query={peopleQuery}
+          onImport={() => setModal({ type: "planImport" })}
+          onRegister={() =>
+            setModal({ type: "register", requestId: crypto.randomUUID() })
           }
+          onExport={() => workbook("export")}
+          onTaskExport={() => setModal({ type: "taskExport" })}
+          onInvite={invitePeople}
+          onOpen={openPerson}
+          onLifecycle={(p) => setModal({ type: "editPerson", id: p.id })}
         />
-        <div className="mini-summary">
-          <span>
-            전체 인원 <strong>{scoped.length}</strong>
-          </span>
-          <i />
-          <span>
-            투입 중{" "}
-            <strong>
-              {scoped.filter((p) => p.lifecycle === "투입 중").length}
-            </strong>
-          </span>
-          <i />
-          <span>
-            투입 예정{" "}
-            <strong>
-              {scoped.filter((p) => p.lifecycle === "투입 예정").length}
-            </strong>
-          </span>
-        </div>
-        <section className="card">
-          <div className="filter-bar">
-            <SearchBox
-              value={search}
-              onChange={setSearch}
-              placeholder="이름, 소속, 역할 검색"
-            />
-            <div className="filter-controls">
-              {scope === "PMO" && (
-                <select
-                  aria-label="프로젝트 필터"
-                  value={projectFilter}
-                  onChange={(e) => setProjectFilter(e.target.value)}
-                >
-                  <option>전체 프로젝트</option>
-                  <option>SFA</option>
-                  <option>그룹웨어</option>
-                </select>
-              )}
-              <select
-                aria-label="상태 필터"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                {[
-                  "전체 상태",
-                  "본인 등록 대기",
-                  "등록 완료",
-                  "투입 중",
-                  "투입 예정",
-                  "투입 보류",
-                  "준비 충족",
-                  "준비 미완료",
-                  "철수 완료",
-                ].map((v) => (
-                  <option key={v}>{v}</option>
-                ))}
-              </select>
-              <span className="result-count">
-                총 {filteredPeople().length}명
-              </span>
-            </div>
-          </div>
-          <PersonTable />
-          <div className="table-footer">
-            <span>선택한 범위의 전체 인원 {filteredPeople().length}명</span>
-            <span className="page-number">1</span>
-          </div>
-        </section>
-        <div className="info-note">
-          <ShieldCheck size={16} />
-          {scope === "PMO"
-            ? "PMO는 전체 프로젝트의 인원과 준비 현황을 관리할 수 있습니다."
-            : `${scope} 담당자에게는 해당 프로젝트 인원만 표시됩니다.`}
-        </div>
       </>
     );
   }
   function Tasks() {
-    const ps = admin ? scoped : [member];
     return (
-      <>
-        <PageHeading
-          title={admin ? "준비 작업" : "나의 작업"}
-          desc="누가, 무엇을, 언제 해야 하는지 연결된 흐름으로 확인하세요."
-          actions={
-            <>
-              <Btn icon={Sparkles} onClick={() => setAi(true)}>
-                AI 업무 도우미
-              </Btn>
-              {admin && (
-                <Btn
-                  icon={Download}
-                  onClick={() => setModal({ type: "taskExport" })}
-                >
-                  작업 양식 다운로드
-                </Btn>
-              )}
-              {admin && (
-                <Btn
-                  variant="primary"
-                  icon={Plus}
-                  onClick={() => setModal({ type: "addTask" })}
-                >
-                  작업 추가
-                </Btn>
-              )}
-            </>
-          }
-        />
-        <div className="tabs">
-          {[
-            "전체 작업",
-            "내가 할 작업",
-            admin ? "수행사 작업" : "주관사 작업",
-          ].map((v) => (
-            <button
-              className={taskOwner === v ? "active" : ""}
-              key={v}
-              onClick={() => setTaskOwner(v)}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
-        <div className="filter-bar standalone">
-          <SearchBox
-            value={search}
-            onChange={setSearch}
-            placeholder="작업명 또는 인원 검색"
-          />
-          <span className="muted">
-            <Link2 size={14} /> 선행 작업 완료 시 후속 작업이 열립니다
-          </span>
-        </div>
-        {ps
-          .filter(
-            (p) =>
-              !search ||
-              `${p.name} ${p.displayId} ${p.company}`
-                .toLowerCase()
-                .includes(search.toLowerCase()) ||
-              personTasks(p).some((t) => t.title.includes(search)),
-          )
-          .map((p) => (
-            <section className="card task-person" key={p.id}>
-              <div className="card-heading">
-                <div className="person-cell">
-                  <Avatar person={p} small />
-                  <div>
-                    <h2>
-                      {p.name !== p.id
-                        ? `${p.name} · ${p.displayId || ""}`
-                        : p.id}{" "}
-                      <span className="subtle-tag">{p.project}</span>
-                    </h2>
-                    <p>
-                      {fmt(p.start)} 투입 · {p.project === "SFA" ? "SFA" : "GW"}
-                      -담당자
-                    </p>
-                  </div>
-                </div>
-                <Progress value={progress(p, undefined)} />
-              </div>
-              <TaskRows person={p} filter={taskOwner} />
-            </section>
-          ))}
-      </>
+      <TaskBoard
+        data={data}
+        people={scoped}
+        admin={admin}
+        onTask={openWorkTask}
+        onInvite={invitePeople}
+        actionFor={actionFor}
+        onAdd={() => setModal({ type: "addTask" })}
+        onExport={() => setModal({ type: "taskExport" })}
+      />
     );
   }
   function Reviews() {
@@ -1581,7 +1011,8 @@ export default function App({ initialState, actor, onLogout }) {
               : reviewTab === "보완 요청"
                 ? r.status === "fix"
                 : r.status === "done")) &&
-        (!search || `${r.p.id} ${taskLabel(r.id)}`.includes(search)),
+        (!search ||
+          `${r.p.name} ${r.p.company} ${taskLabel(r.id)}`.includes(search)),
     );
     return (
       <>
@@ -1988,203 +1419,15 @@ export default function App({ initialState, actor, onLogout }) {
     );
   }
   function MemberHome() {
-    const pct = progress(member, undefined),
-      next = personTasks(member).filter(
-        (t) =>
-          t.owner === "member" &&
-          ["ready", "fix"].includes(taskStatus(member, t.id, undefined)),
-      );
     return (
-      <>
-        <div className="page-heading member-heading">
-          <div>
-            <div className="eyebrow">MY ONBOARDING</div>
-            <h1>
-              {member.name || member.id}님, 반가워요
-              <span className="heading-dot" />
-            </h1>
-            <p>새로운 프로젝트의 시작, 레디보드이 함께 준비할게요.</p>
-          </div>
-          <span className="subtle-tag">{member.project} 프로젝트</span>
-        </div>
-        <section className="member-hero">
-          <div>
-            <span className="hero-project">
-              <Layers size={15} />
-              {member.project} 프로젝트
-            </span>
-            <h2>
-              {isPrepared(member, undefined)
-                ? "투입 준비를 모두 마쳤어요."
-                : "하나씩 준비하면, 시작이 가까워져요."}
-            </h2>
-            <p>
-              {fmt(member.start)} 투입{" "}
-              {member.lifecycle === "투입 중" ? "중" : "예정"} <span>·</span>{" "}
-              {member.company}
-            </p>
-            <div className="hero-progress">
-              <span>
-                <i style={{ width: `${pct}%` }} />
-              </span>
-              <strong>
-                {pct}
-                <small>%</small>
-              </strong>
-            </div>
-            <div className="hero-footer">
-              <CheckCircle2 size={14} />
-              {isPrepared(member, undefined)
-                ? "모든 필수 준비가 충족되었습니다."
-                : `필수 준비 ${requiredTasks(member, data.customTasks).filter((t) => taskStatus(member, t.id) === "done").length}/${requiredTasks(member, data.customTasks).length} 완료`}
-            </div>
-          </div>
-          <div className="hero-illustration member-cast">
-            <BrandCharacters label="프로젝트의 첫 시작을 응원하는 캐릭터들" />
-            <span>우리 함께, 준비 ON!</span>
-          </div>
-        </section>
-        <div className="member-quick-grid">
-          {[
-            {
-              id: "education",
-              icon: GraduationCap,
-              title: "교육",
-              num: ["O08", "O09"].filter(
-                (id) => taskStatus(member, id, undefined) === "done",
-              ).length,
-              total: 2,
-              color: "blue",
-            },
-            {
-              id: "documents",
-              icon: FileText,
-              title: "서류",
-              num: ["O10", "O11"].filter(
-                (id) => taskStatus(member, id, undefined) === "done",
-              ).length,
-              total: 2,
-              color: "purple",
-            },
-          ].map((c) => (
-            <button
-              className="quick-card card"
-              key={c.id}
-              onClick={() => go(c.id)}
-            >
-              <span className={cx("square-icon", c.color)}>
-                <c.icon size={22} />
-              </span>
-              <div>
-                <span>{c.title}</span>
-                <strong>
-                  {c.num}
-                  {c.total && <small> / {c.total} 완료</small>}
-                </strong>
-              </div>
-              <ChevronRight size={17} />
-            </button>
-          ))}
-        </div>
-        <section className="card">
-          <div className="card-heading">
-            <div>
-              <h2>
-                지금 내가 할 일{" "}
-                <span className="count-pill">{next.length}</span>
-              </h2>
-              <p>실행 가능한 작업부터 차근차근 시작해 보세요.</p>
-            </div>
-            <button className="text-link" onClick={() => go("tasks")}>
-              전체 작업
-              <ArrowRight size={14} />
-            </button>
-          </div>
-          {next.length ? (
-            <div className="next-list">
-              {next.map((t) => (
-                <div className="next-row" key={t.id}>
-                  <span
-                    className={cx(
-                      "next-icon",
-                      t.kind === "education"
-                        ? "blue"
-                        : t.kind === "document"
-                          ? "purple"
-                          : "green",
-                    )}
-                  >
-                    {t.kind === "education" ? (
-                      <GraduationCap size={21} />
-                    ) : t.kind === "document" ? (
-                      <FileText size={21} />
-                    ) : (
-                      <ClipboardList size={21} />
-                    )}
-                  </span>
-                  <div>
-                    <strong>{t.title}</strong>
-                    <p>{t.desc}</p>
-                  </div>
-                  <Badge status={taskStatus(member, t.id, undefined)} />
-                  {actionFor(member, t)}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <Empty
-              title={
-                isPrepared(member, undefined)
-                  ? "모든 준비를 마쳤어요!"
-                  : "주관사의 준비를 기다리고 있어요"
-              }
-              desc="주관사 작업이 완료되면 후속 작업을 시작할 수 있어요."
-            />
-          )}
-        </section>
-        <div className="member-bottom">
-          <section className="card">
-            <div className="card-heading">
-              <div>
-                <h2>주관사에서 준비하고 있어요</h2>
-                <p>담당자의 처리 현황도 함께 확인하세요.</p>
-              </div>
-              <Building2 size={18} />
-            </div>
-            <div className="host-work">
-              {TASKS.filter(
-                (t) =>
-                  t.owner === "admin" && !["O01", "O12", "O16"].includes(t.id),
-              )
-                .slice(0, 5)
-                .map((t) => (
-                  <div key={t.id}>
-                    <span>{t.title}</span>
-                    <Badge status={taskStatus(member, t.id, undefined)} />
-                  </div>
-                ))}
-            </div>
-          </section>
-          <section className="member-help">
-            <Sparkles size={28} />
-            <h2>
-              막히는 순간엔,
-              <br />
-              AI 도우미에게 물어보세요.
-            </h2>
-            <p>
-              투입 절차부터 서류 작성까지
-              <br />
-              필요한 안내를 한곳에서.
-            </p>
-            <Btn onClick={() => setAi(true)}>
-              도움 받기
-              <ArrowRight size={14} />
-            </Btn>
-            <span>시연용 AI · 실제 모델 미연동</span>
-          </section>
-        </div>
-      </>
+      <MemberDashboard
+        person={member}
+        data={data}
+        onPage={go}
+        onTask={openWorkTask}
+        actionFor={actionFor}
+        onContinue={() => setModal({ type: "continueRegistration" })}
+      />
     );
   }
   function Education() {
@@ -2406,7 +1649,8 @@ export default function App({ initialState, actor, onLogout }) {
     );
   }
   function SettingsPage() {
-    const [links, setLinks] = useState({ ...data.settings });
+    const links = settingsDraft,
+      setLinks = setSettingsDraft;
     return (
       <>
         <PageHeading
@@ -2426,6 +1670,46 @@ export default function App({ initialState, actor, onLogout }) {
             });
           }}
         />
+        <section className="card settings-card">
+          <div className="card-heading">
+            <h2>투입 임박 기준</h2>
+            <p>
+              현재 기준일로부터 이 기간 안에 투입 예정인 준비 미완료 인원을
+              표시합니다.
+            </p>
+          </div>
+          <label className="field">
+            <span>투입 임박 기준 일수</span>
+            <input
+              aria-label="투입 임박 기준 일수"
+              type="number"
+              min="1"
+              max="60"
+              disabled={scope !== "PMO"}
+              value={links.imminentDays ?? horizonDays(data.settings)}
+              onChange={(e) =>
+                setLinks({ ...links, imminentDays: e.target.value })
+              }
+            />
+          </label>
+          <Btn
+            variant="primary"
+            disabled={scope !== "PMO"}
+            onClick={() => {
+              const value = Number(
+                links.imminentDays ?? horizonDays(data.settings),
+              );
+              if (!Number.isInteger(value) || value < 1 || value > 60)
+                return notify("투입 임박 기준은 1~60일로 입력해 주세요.");
+              mutate((d) => {
+                d.settings.imminentDays = value;
+              });
+              notify("투입 임박 기준을 저장했습니다.");
+            }}
+          >
+            투입 임박 기준 저장
+          </Btn>
+        </section>
         <section className="card settings-card">
           <div className="card-heading">
             <div>
@@ -2614,6 +1898,11 @@ export default function App({ initialState, actor, onLogout }) {
               <Progress value={progress(p, undefined)} />
             </div>
           </div>
+          <div className="person-state-overview">
+            <span>등록: {personState(p, data).registration}</span>
+            <Preparation person={p} data={data} />
+            <span>투입: {p.lifecycle}</span>
+          </div>
           {p.registrationStatus === "pending_registration" && (
             <div className="info-note registration-banner">
               <div>
@@ -2634,6 +1923,39 @@ export default function App({ initialState, actor, onLogout }) {
               )}
             </div>
           )}
+          <div className="person-detail-metrics">
+            <span>
+              교육 완료{" "}
+              <b>
+                {
+                  ["O08", "O09"].filter((id) => taskStatus(p, id) === "done")
+                    .length
+                }
+                /2
+              </b>
+            </span>
+            <span>
+              서류 승인{" "}
+              <b>
+                {
+                  ["O10", "O11"].filter((id) => taskStatus(p, id) === "done")
+                    .length
+                }
+                /2
+              </b>
+            </span>
+            <span>
+              증빙 보완{" "}
+              <b>
+                {
+                  ["O08", "O09", "O10", "O11"].filter(
+                    (id) => evidenceStatus(p, id) === "fix",
+                  ).length
+                }
+                건
+              </b>
+            </span>
+          </div>
           <div className="tabs modal-tabs">
             {[
               ["tasks", "준비 작업"],
@@ -2764,6 +2086,7 @@ export default function App({ initialState, actor, onLogout }) {
           Modal={Modal}
           people={data.people}
           personId={modal.id}
+          personIds={modal.ids}
           onClose={close}
         />
       );
@@ -2873,7 +2196,7 @@ export default function App({ initialState, actor, onLogout }) {
             <div className="detail-grid">
               <div>
                 <span>담당 인원</span>
-                <strong>{p.id}</strong>
+                <strong>{p.name}</strong>
               </div>
               <div>
                 <span>프로젝트</span>
@@ -2958,7 +2281,7 @@ export default function App({ initialState, actor, onLogout }) {
               addNotice(
                 d,
                 person,
-                `${person.id}님의 새 ${modal.type === "change" ? "변경 요청" : "문의"}`,
+                `${person.name}님의 새 ${modal.type === "change" ? "변경 요청" : "문의"}`,
                 form.title,
               );
             });
@@ -3006,11 +2329,12 @@ export default function App({ initialState, actor, onLogout }) {
               reschedulePreparation(d, person, previousStart, form.start);
               person.end = form.end;
               person.role = form.role;
+              person.lifecycle = form.lifecycle;
               person.history.unshift({
                 text: `투입 정보 변경 · ${form.reason}`,
                 date: new Date().toLocaleString("ko-KR"),
               });
-              audit(d, `${p.id} 투입 정보 변경`, form.reason);
+              audit(d, `${p.name} 투입 정보 변경`, form.reason);
             });
             close();
             notify("투입 정보를 변경하고 이력을 남겼습니다.");
@@ -3251,22 +2575,13 @@ export default function App({ initialState, actor, onLogout }) {
           </>
         )}
         <div className="sidebar-bottom">
-          <div className="sidebar-ai">
-            <BrandCharacters focus="guide" className="sidebar-character" />
-            <span>
-              <Sparkles size={19} />
-              레디보드 AI
-            </span>
-            <p>
-              준비부터 다음 조치까지,
-              <br />
-              함께 생각하는 업무 도우미
-            </p>
-            <button onClick={() => setAi(true)}>
-              AI에게 물어보기
-              <ArrowUpRight size={16} />
-            </button>
-          </div>
+          <button
+            className="nav-item assistant-entry"
+            onClick={() => setAi((v) => !v)}
+          >
+            <Sparkles size={18} />
+            <span>AI 업무 도우미</span>
+          </button>
           <button
             className="sidebar-help"
             onClick={() => setModal({ type: "help" })}
@@ -3274,6 +2589,10 @@ export default function App({ initialState, actor, onLogout }) {
             <HelpCircle size={17} />
             이용 가이드
             <ArrowUpRight size={14} />
+          </button>
+          <button className="nav-item" onClick={onLogout}>
+            <LogOut size={18} />
+            <span>로그아웃</span>
           </button>
           <div className="sidebar-user">
             <span className="user-avatar">{admin ? "P" : member.id[0]}</span>
@@ -3317,55 +2636,56 @@ export default function App({ initialState, actor, onLogout }) {
             <strong>{screenTitle}</strong>
           </div>
           <div className="topbar-actions">
-            {actor.kind === "admin" && actor.scope === "PMO" && (
-              <button
-                className="btn mail-header-sync"
-                disabled={mail.syncing}
-                onClick={() => mail.sync().catch((e) => notify(e.message))}
-              >
-                <Mail size={15} />
-                {mail.syncing ? "메일 분석 중…" : "새 메일 확인"}
-              </button>
+            {!globalThis.__READYBOARD_OFFLINE__ && (
+              <span className="demo-mode-badge">시연 모드</span>
             )}
+            <button
+              className="icon-btn"
+              aria-label="시연 안내"
+              onClick={() => setModal({ type: "help" })}
+            >
+              <HelpCircle size={17} />
+            </button>
             <div className="mode-switch" aria-label="접속 역할">
-              <button className="selected">
+              <span className="selected">
                 <UserRound size={14} />
                 {admin ? "주관사" : "수행사"}
-              </button>
-              <button onClick={onLogout}>로그아웃</button>
+              </span>
             </div>
             <span className="header-divider" />
-            <div className="scope-selector">
-              <span className="scope-dot" />
-              <select
-                aria-label={admin ? "주관사 역할 선택" : "수행사 인원 선택"}
-                value={admin ? scope : member.id}
-                disabled={!admin || actor.scope !== "PMO"}
-                onChange={(e) => {
-                  admin
-                    ? setScope(e.target.value)
-                    : setMemberId(e.target.value);
-                  setSearch("");
-                  setProjectFilter("전체 프로젝트");
-                  setStatusFilter("전체 상태");
-                  setModal(null);
-                  setChat([]);
-                }}
-              >
-                {admin
-                  ? (actor.scope === "PMO"
-                      ? ["PMO", "SFA", "그룹웨어"]
-                      : [actor.scope]
-                    ).map((s) => <option key={s}>{s}</option>)
-                  : [member].map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name !== p.id
-                          ? `${p.name} · ${p.displayId || ""}`
-                          : p.id}
-                      </option>
-                    ))}
-              </select>
-            </div>
+            {!globalThis.__READYBOARD_OFFLINE__ && (
+              <div className="scope-selector">
+                <span className="scope-dot" />
+                <select
+                  aria-label={admin ? "주관사 역할 선택" : "수행사 인원 선택"}
+                  value={admin ? scope : member.id}
+                  disabled={!admin || actor.scope !== "PMO"}
+                  onChange={(e) => {
+                    admin
+                      ? setScope(e.target.value)
+                      : setMemberId(e.target.value);
+                    setSearch("");
+                    setProjectFilter("전체 프로젝트");
+                    setStatusFilter("전체 상태");
+                    setModal(null);
+                    setChat([]);
+                  }}
+                >
+                  {admin
+                    ? (actor.scope === "PMO"
+                        ? ["PMO", "SFA", "그룹웨어"]
+                        : [actor.scope]
+                      ).map((s) => <option key={s}>{s}</option>)
+                    : [member].map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {personIdentity(data, p.id).code
+                            ? `${p.name} · ${p.displayId}`
+                            : p.name}
+                        </option>
+                      ))}
+                </select>
+              </div>
+            )}
             <span className="header-divider" />
             <button
               className={cx(
@@ -3387,46 +2707,21 @@ export default function App({ initialState, actor, onLogout }) {
             <span className="top-avatar">{admin ? "P" : member.id[0]}</span>
           </div>
         </header>
-        <div className="prototype-strip">
-          {!admin && (
-            <button
-              className="self-register-entry"
-              onClick={() => setModal({ type: "continueRegistration" })}
-            >
-              <UserRound size={14} />내 등록 이어하기
-            </button>
-          )}
-          <span>
-            <span className="prototype-dot" />
-            INTERACTIVE PROTOTYPE
-          </span>
-          <p>
-            {globalThis.__READYBOARD_OFFLINE__
-              ? "이 브라우저에 저장한 명단과 준비 상태를 연결합니다. 상단에서 시연 역할을 전환할 수 있습니다."
-              : "서버에 저장한 인원과 준비 상태를 연결합니다. 교육·서류 AI 가이드는 시연용입니다."}
-          </p>
-          <button onClick={() => setModal({ type: "help" })}>
-            시연 가이드
-            <ArrowUpRight size={12} />
-          </button>
-        </div>
-        <div className="server-save-status" role="status">
-          {saving
-            ? "저장 중…"
-            : globalThis.__READYBOARD_OFFLINE__
-              ? "브라우저 저장 · HTML 단독 시연"
-              : "서버 저장 · 브라우저 간 공유"}
-          {saveError && (
-            <button
-              onClick={() => {
-                clearError();
-                refresh();
-              }}
-            >
-              최신 상태 다시 확인
-            </button>
-          )}
-        </div>
+        {(saving || saveError) && (
+          <div className="work-save-status" role="status">
+            {saving ? "저장 중…" : saveError}
+            {saveError && (
+              <button
+                onClick={() => {
+                  clearError();
+                  refresh();
+                }}
+              >
+                최신 상태 다시 확인
+              </button>
+            )}
+          </div>
+        )}
         <main
           className="main-content"
           key={
@@ -3454,7 +2749,7 @@ export default function App({ initialState, actor, onLogout }) {
                 onInvite={(id) => setModal({ type: "invitations", id })}
               />
             ) : page === "settings" ? (
-              <SettingsPage />
+              SettingsPage()
             ) : (
               Dashboard()
             )
@@ -3480,11 +2775,6 @@ export default function App({ initialState, actor, onLogout }) {
             </span>
           </div>
         </main>
-        <button className="floating-ai" onClick={() => setAi(!ai)}>
-          <Sparkles size={19} />
-          <span>AI 도우미</span>
-          <span className="ai-floating-dot" />
-        </button>
       </div>
       {notifications && (
         <>
@@ -4381,6 +3671,7 @@ function MessageDialog({ message, taskTitle, admin, onClose, onReply }) {
 }
 function EditPersonForm({ person, onClose, onSave }) {
   const [form, setForm] = useState({
+    lifecycle: person.lifecycle || "투입 예정",
     start: person.start,
     end: person.end,
     role: person.role,
@@ -4408,13 +3699,28 @@ function EditPersonForm({ person, onClose, onSave }) {
               <span>{label}</span>
               <input
                 type={type}
-                required
+                required={key !== "role"}
                 min={key === "end" ? form.start : undefined}
                 value={form[key]}
                 onChange={(e) => setForm({ ...form, [key]: e.target.value })}
               />
             </label>
           ))}
+          <label className="field full-field">
+            <span>실제 투입 상태</span>
+            <select
+              aria-label="실제 투입 상태"
+              value={form.lifecycle}
+              onChange={(e) => setForm({ ...form, lifecycle: e.target.value })}
+            >
+              {["투입 예정", "투입 중", "투입 보류", "철수 완료"].map((v) => (
+                <option key={v}>{v}</option>
+              ))}
+            </select>
+            <small>
+              준비율·최종 확인과 별도로 담당자가 실제 투입 여부를 기록합니다.
+            </small>
+          </label>
           <label className="field full-field">
             <span>변경 사유</span>
             <textarea
@@ -4444,7 +3750,7 @@ function OffboardDialog({ person, onClose, onConfirm }) {
   const [checks, setChecks] = useState([false, false, false]);
   return (
     <Modal
-      title={`${person.id} · 철수 확인`}
+      title={`${person.name} · 철수 확인`}
       subtitle="외부 처리 결과와 반납을 확인한 후 철수를 완료합니다."
       onClose={onClose}
     >

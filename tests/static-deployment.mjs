@@ -1,3 +1,4 @@
+import { chooseDemoRole } from "./demo-controls.mjs";
 import { chromium, expect } from "@playwright/test";
 import assert from "node:assert/strict";
 import http from "node:http";
@@ -31,14 +32,12 @@ try {
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
   await expect(page.locator(".sidebar")).toBeVisible();
-  await expect(page.locator(".review-toolbar")).toContainText("HTML 단독 시연");
+  await expect(page.locator(".review-toolbar")).toContainText("시연 모드");
   assert.equal(
     await page.getByText("서버 연결이 필요합니다.", { exact: true }).count(),
     0,
   );
-  await page
-    .getByRole("button", { name: "받은편지함 열기", exact: true })
-    .click();
+  await page.getByRole("button", { name: "받은편지함", exact: true }).click();
   await page
     .locator(".inbox-toolbar")
     .getByRole("button", { name: "새 메일 확인", exact: true })
@@ -55,21 +54,19 @@ try {
   await expect(page.locator("[data-inbox-message]")).toHaveCount(5);
   await page.reload();
   await expect(page.locator(".sidebar")).toBeVisible();
-  await page
-    .getByRole("button", { name: "받은편지함 열기", exact: true })
-    .click();
+  await page.getByRole("button", { name: "받은편지함", exact: true }).click();
   await expect(page.locator("[data-inbox-message]")).toHaveCount(5);
   await expect(
     page.getByRole("button", { name: "검토 대기 2건", exact: true }),
   ).toBeVisible();
-  await page.getByLabel("검토 화면 역할").selectOption("member");
+  await chooseDemoRole(page, "member");
   await expect(page.locator(".sidebar")).toBeVisible();
   const own = await page.evaluate(
     async () => await (await fetch("/api/state")).json(),
   );
   assert.equal(own.state.people.length, 1);
   assert.equal(own.actor.kind, "member");
-  await page.getByLabel("검토 화면 역할").selectOption("pmo");
+  await chooseDemoRole(page, "pmo");
   await expect(page.locator(".sidebar")).toBeVisible();
   await page.evaluate(() => scrollTo(0, 0));
   await mkdir("artifacts", { recursive: true });

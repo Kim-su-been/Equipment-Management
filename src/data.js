@@ -180,9 +180,7 @@ export function taskStatus(person, id, seats = {}, customTasks = []) {
         : "waiting";
   if (
     id === "O16" &&
-    requiredTasks(person, customTasks).some(
-      (t) => t.custom && statusOf(t.id) !== "done",
-    )
+    requiredTasks(person, customTasks).some((t) => statusOf(t.id) !== "done")
   )
     return "waiting";
   if (person.tasks[id]) return person.tasks[id];

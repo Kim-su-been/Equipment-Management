@@ -9,8 +9,13 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { reschedulePreparation, validIsoDate } from "./personnel-workflow.js";
+import MailChangeOverview, { HighlightedMail } from "./MailChangeOverview.jsx";
 import MailInboxPane from "./MailInboxPane.jsx";
 import { api } from "./api.js";
+const normalize = (value) =>
+  String(value || "")
+    .replace(/[\s_\-()（）]/g, "")
+    .toLowerCase();
 const mailTime = (value) =>
   new Date(value).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
 const types = { new: "신규 투입", change: "기존 정보 변경", hold: "투입 보류" },
@@ -110,9 +115,64 @@ export default function MailReviewPage({
     request?.projectPeople.filter(
       (p) =>
         (!edit?.project || p.project === edit.project) &&
-        p.name.replace(/\s/g, "") ===
-          String(edit?.name || "").replace(/\s/g, ""),
+        (!edit?.company || normalize(p.company) === normalize(edit.company)) &&
+        normalize(p.name) === normalize(edit?.name),
     ) || [];
+  const blockers = [];
+  if (!edit?.project) blockers.push("프로젝트를 확인하세요.");
+  if (!edit?.company?.trim()) blockers.push("수행사를 입력하세요.");
+  if (!edit?.name?.trim()) blockers.push("인원명을 입력하세요.");
+  if (edit?.type !== "new" && !selected)
+    blockers.push("반영할 기존 인원 후보를 확인하고 한 기록을 선택하세요.");
+  if (
+    selected &&
+    (normalize(selected.name) !== normalize(edit?.name) ||
+      normalize(selected.company) !== normalize(edit?.company) ||
+      selected.project !== edit?.project)
+  )
+    blockers.push("선택한 인원과 프로젝트·회사·이름을 일치시켜 주세요.");
+  if (
+    (edit?.type === "new" || edit?.startDateRequested) &&
+    edit?.type !== "hold" &&
+    !validIsoDate(edit?.startDate)
+  )
+    blockers.push("제안 투입일의 확정 날짜를 입력하세요.");
+  if (edit?.endDateRequested && !validIsoDate(edit?.endDate))
+    blockers.push("제안 종료일을 확인하세요.");
+  if (edit?.startDate && edit?.endDate && edit.startDate > edit.endDate)
+    blockers.push("종료일은 투입일 이후여야 합니다.");
+  if (conflict)
+    blockers.push("기존값이 변경되었습니다. 최신 값 확인 후 다시 검토하세요.");
+  if (!confirmed)
+    blockers.push("원문·기존값·제안을 검토하고 검토 확인을 선택하세요.");
+  if (edit?.type === "new" && !newRecord)
+    blockers.push(
+      "기존 후보와 필수값을 확인하고 별도 신규 기록 생성을 확인하세요.",
+    );
+  if (edit?.conditional && !condition)
+    blockers.push("조건부 요청의 조건 충족을 확인하세요.");
+  const changedFields = [
+    "type",
+    "project",
+    "company",
+    "name",
+    "startDate",
+    "endDate",
+    "tasks",
+    "resume",
+    "conditional",
+    "startDateRequested",
+    "endDateRequested",
+  ];
+  if (
+    request &&
+    edit &&
+    changedFields.some(
+      (k) => JSON.stringify(request.payload[k]) !== JSON.stringify(edit[k]),
+    ) &&
+    !edit.reviewNote?.trim()
+  )
+    blockers.push("추출값 수정 근거를 검토 메모에 입력하세요.");
   const change = (key, value) => {
     setEdit((prev) => ({ ...prev, [key]: value }));
     setConfirmed(false);
@@ -297,6 +357,13 @@ export default function MailReviewPage({
               최신 기존값 새로고침
             </button>
           </div>
+          <MailChangeOverview
+            request={request}
+            edit={edit}
+            selected={selected}
+            recommended={liveCandidates.length === 1 ? liveCandidates[0] : null}
+            data={data}
+          />
           <div className="mail-review-columns">
             <div className="mail-original">
               <h2>{request.message.subject}</h2>
@@ -315,43 +382,54 @@ export default function MailReviewPage({
                     : "규칙 기반 초안"}
                 </span>
               </div>
-              <div className="info-note">{request.message.analysisNotice}</div>
+              <details className="mail-analysis-info">
+                <summary>분석 안내</summary>
+                <p>{request.message.analysisNotice}</p>
+              </details>
               <h3>최신 본문 · 분석 대상</h3>
-              <pre>{request.message.latestBody}</pre>
+              <HighlightedMail
+                text={request.message.latestBody}
+                quotes={[
+                  ...Object.values(request.payload.evidence),
+                  ...request.payload.tasks.map((t) => t.evidence),
+                ]}
+              />
               {request.message.quotedBody && (
                 <details>
                   <summary>이전 인용문 · 분석 제외</summary>
                   <pre className="quoted">{request.message.quotedBody}</pre>
                 </details>
               )}
-              <h3>추출 원문 근거</h3>
-              <dl className="mail-evidence">
-                {Object.entries(request.payload.evidence)
-                  .filter(([, v]) => v)
-                  .map(([key, value]) => (
-                    <div key={key}>
-                      <dt>
-                        {
+              <details className="mail-evidence-fold">
+                <summary>상세 추출 근거</summary>
+                <dl className="mail-evidence">
+                  {Object.entries(request.payload.evidence)
+                    .filter(([, v]) => v)
+                    .map(([key, value]) => (
+                      <div key={key}>
+                        <dt>
                           {
-                            type: "유형",
-                            name: "인원명",
-                            project: "프로젝트",
-                            company: "수행사",
-                            startDate: "투입일",
-                            endDate: "종료일",
-                          }[key]
-                        }
-                      </dt>
-                      <dd>{value}</dd>
+                            {
+                              type: "유형",
+                              name: "인원명",
+                              project: "프로젝트",
+                              company: "수행사",
+                              startDate: "투입일",
+                              endDate: "종료일",
+                            }[key]
+                          }
+                        </dt>
+                        <dd>{value}</dd>
+                      </div>
+                    ))}
+                  {request.payload.tasks.map((t, i) => (
+                    <div key={i}>
+                      <dt>{t.title}</dt>
+                      <dd>{t.evidence}</dd>
                     </div>
                   ))}
-                {request.payload.tasks.map((t, i) => (
-                  <div key={i}>
-                    <dt>{t.title}</dt>
-                    <dd>{t.evidence}</dd>
-                  </div>
-                ))}
-              </dl>
+                </dl>
+              </details>
               {request.thread.length > 0 && (
                 <div className="mail-thread">
                   <h3>같은 대화의 이전·최신 요청</h3>
@@ -424,6 +502,11 @@ export default function MailReviewPage({
                     <option>SFA</option>
                     <option>그룹웨어</option>
                   </select>
+                  {!edit.project && (
+                    <small className="mail-field-issue">
+                      프로젝트 확인 필요
+                    </small>
+                  )}
                 </label>
                 <label>
                   수행사
@@ -431,8 +514,14 @@ export default function MailReviewPage({
                     aria-label="메일 요청 수행사"
                     disabled={!editable}
                     value={edit.company || ""}
-                    onChange={(e) => change("company", e.target.value)}
+                    onChange={(e) => {
+                      change("company", e.target.value);
+                      change("personId", "");
+                    }}
                   />
+                  {!edit.company && (
+                    <small className="mail-field-issue">수행사 확인 필요</small>
+                  )}
                 </label>
                 <label>
                   인원명
@@ -440,10 +529,53 @@ export default function MailReviewPage({
                     aria-label="메일 요청 인원명"
                     disabled={!editable}
                     value={edit.name || ""}
-                    onChange={(e) => change("name", e.target.value)}
+                    onChange={(e) => {
+                      change("name", e.target.value);
+                      change("personId", "");
+                    }}
                   />
+                  {!edit.name && (
+                    <small className="mail-field-issue">인원명 확인 필요</small>
+                  )}
                 </label>
               </div>
+              <section className="mail-candidates">
+                <h3>프로젝트·회사·이름 대조 후보 {liveCandidates.length}명</h3>
+                {!liveCandidates.length && (
+                  <p>
+                    일치하는 기존 인원이 없습니다. 대상 정보를 확인하거나 신규
+                    등록 여부를 검토하세요.
+                  </p>
+                )}
+                {liveCandidates.map((p) => {
+                  const full = data.people.find((x) => x.id === p.id);
+                  return (
+                    <div className="mail-candidate" key={p.id}>
+                      <div>
+                        <b>
+                          {p.name} · {p.company} · {p.project}
+                          {liveCandidates.length === 1 && " · 추천 후보"}
+                        </b>
+                        <small>
+                          {p.displayId !== p.name ? p.displayId + " · " : ""}
+                          투입 {p.start || "미정"} ~ {p.end || "미정"} ·{" "}
+                          {full?.birthDate || full?.birthYear || "생년 미확인"}
+                        </small>
+                      </div>
+                      {editable && edit.type !== "new" && (
+                        <button
+                          className="btn"
+                          onClick={() => change("personId", p.id)}
+                        >
+                          {edit.personId === p.id
+                            ? "확인한 대상"
+                            : "이 인원으로 확인"}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </section>
               {edit.type !== "new" && (
                 <label className="mail-person-selector">
                   반영 대상 · 고유 인원 기록
@@ -461,7 +593,7 @@ export default function MailReviewPage({
                       .map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.displayId} · {p.name} · {p.company} ·{" "}
-                          {p.start || "투입일 미정"} · {p.id.slice(0, 8)}
+                          {p.start || "투입일 미정"}
                         </option>
                       ))}
                   </select>
@@ -486,7 +618,6 @@ export default function MailReviewPage({
                   <h3>{editable ? "시스템 기존값" : "반영 후 현재값"}</h3>
                   <dl>
                     {[
-                      ["인원 고유 ID", selected.id],
                       [
                         "이름 / 수행사",
                         `${selected.name} / ${selected.company}`,
@@ -510,6 +641,10 @@ export default function MailReviewPage({
                       </div>
                     ))}
                   </dl>
+                  <details>
+                    <summary>고유 기록 정보</summary>
+                    {selected.id} · 버전 {selected.recordVersion}
+                  </details>
                   {conflict && (
                     <div className="form-error">
                       <strong>검토 중 기존값이 변경되었습니다.</strong>
@@ -549,6 +684,11 @@ export default function MailReviewPage({
               <div className="form-grid">
                 <label>
                   제안 투입일
+                  {edit.startDateRequested && !edit.startDate && (
+                    <small className="mail-field-issue">
+                      날짜 미정 · 확정 날짜 확인 필요
+                    </small>
+                  )}
                   <input
                     aria-label="메일 제안 투입일"
                     disabled={!editable}
@@ -752,6 +892,16 @@ export default function MailReviewPage({
                       생성합니다.
                     </label>
                   )}
+                  {blockers.length > 0 && (
+                    <div className="mail-approval-blockers" aria-live="polite">
+                      <strong>승인 전 확인할 항목</strong>
+                      <ul>
+                        {blockers.map((text, i) => (
+                          <li key={i}>{text}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                   <div className="mail-review-actions">
                     <button
                       className="btn"
@@ -782,17 +932,11 @@ export default function MailReviewPage({
                       }
                     >
                       <Pause size={15} />
-                      검토 보류
+                      보류
                     </button>
                     <button
                       className="btn primary"
-                      disabled={
-                        busy ||
-                        !confirmed ||
-                        !!conflict ||
-                        (edit.type === "new" && !newRecord) ||
-                        (edit.conditional && !condition)
-                      }
+                      disabled={busy || blockers.length > 0}
                       onClick={() =>
                         run(async () => {
                           const saved = await save();
@@ -824,7 +968,7 @@ export default function MailReviewPage({
                       }
                     >
                       <Check size={15} />
-                      승인 · 명단에 반영
+                      승인 후 반영
                     </button>
                   </div>
                 </>
@@ -833,8 +977,7 @@ export default function MailReviewPage({
                 <div className="mail-applied-result">
                   <h3>반영 완료</h3>
                   <p>
-                    {request.result.after.name} · {request.result.displayId} ·{" "}
-                    {request.result.personId}
+                    {request.result.after.name} · {request.result.displayId}
                   </p>
                   <p>
                     개인별 마감일 변경 {request.result.changedDeadlines.length}

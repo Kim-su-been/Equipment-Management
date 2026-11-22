@@ -268,9 +268,12 @@ test("project manager permissions, all pages and link-only start render without 
   await roster(page);
   await expect(
     page.getByRole("button", { name: "인력계획서 불러오기", exact: true }),
-  ).toHaveCount(0);
+  ).toBeDisabled();
   await expect(page.locator("tbody")).not.toContainText("그룹웨어");
-  await page.getByRole("button", { name: "인원 등록", exact: true }).click();
+  await page.getByRole("button", { name: "기타 작업", exact: true }).click();
+  await page
+    .getByRole("button", { name: "개별 인원 등록", exact: true })
+    .click();
   const manual = page.getByRole("dialog");
   await manual.getByLabel("성명 *", { exact: true }).fill("수동 대기");
   await manual

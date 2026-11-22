@@ -4,6 +4,7 @@ export default function InvitationManager({
   Modal,
   people,
   personId,
+  personIds,
   onClose,
 }) {
   const [links, setLinks] = useState({}),
@@ -13,7 +14,8 @@ export default function InvitationManager({
   const pending = people.filter(
     (p) =>
       p.registrationStatus === "pending_registration" &&
-      (!personId || p.id === personId),
+      (!personId || p.id === personId) &&
+      (!personIds || personIds.includes(p.id)),
   );
   useEffect(() => {
     let active = true;

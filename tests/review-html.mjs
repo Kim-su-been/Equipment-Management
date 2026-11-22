@@ -19,9 +19,7 @@ try {
     errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto(`http://127.0.0.1:${server.address().port}`);
-  await page
-    .getByRole("button", { name: "받은편지함 열기", exact: true })
-    .click();
+  await page.getByRole("button", { name: "받은편지함", exact: true }).click();
   await page.waitForSelector(".inbox-layout");
   assert.equal(await page.locator(".mail-source-settings").count(), 0);
   await page
@@ -65,17 +63,13 @@ try {
   await page
     .getByRole("button", { name: "검토 대기 2건", exact: true })
     .click();
-  const row = page
-    .locator(".mail-inbox tbody tr")
-    .filter({
-      has: page.locator("td:first-child strong", { hasText: /^김민수$/ }),
-    });
+  const row = page.locator(".mail-inbox tbody tr").filter({
+    has: page.locator("td:first-child strong", { hasText: /^김민수$/ }),
+  });
   await row.getByRole("button", { name: "검토하기", exact: true }).click();
   await page.getByLabel("메일 반영 인원 선택").selectOption(kim.id);
   await page.getByLabel("메일 원문 검토 확인").check();
-  await page
-    .getByRole("button", { name: "승인 · 명단에 반영", exact: true })
-    .click();
+  await page.getByRole("button", { name: "승인 후 반영", exact: true }).click();
   await page.locator(".mail-applied-result").waitFor();
   const after = await page.evaluate(
     async () => await (await fetch("/api/state")).json(),
@@ -94,9 +88,7 @@ try {
     .click();
   await page.getByLabel("메일 원문 검토 확인").check();
   await page.getByLabel("메일 별도 신규 기록 확인").check();
-  await page
-    .getByRole("button", { name: "승인 · 명단에 반영", exact: true })
-    .click();
+  await page.getByRole("button", { name: "승인 후 반영", exact: true }).click();
   await page.locator(".mail-applied-result").waitFor();
   const final = await page.evaluate(
       async () => await (await fetch("/api/state")).json(),

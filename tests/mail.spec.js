@@ -14,7 +14,7 @@ async function login(page, scope = "PMO") {
 async function mailPage(page) {
   await page
     .locator(".sidebar")
-    .getByRole("button", { name: "AI 메일 요청 검토", exact: true })
+    .getByRole("button", { name: "받은편지함", exact: true })
     .click();
   await expect(page.locator(".inbox-layout")).toBeVisible();
   await expect(page.locator(".mail-source-settings")).toHaveCount(0);
@@ -197,9 +197,7 @@ test("mail popup → per-person review → stale-value recheck → Kim date upda
     ).ok(),
   ).toBeTruthy();
   await page.getByLabel("메일 원문 검토 확인").check();
-  await page
-    .getByRole("button", { name: "승인 · 명단에 반영", exact: true })
-    .click();
+  await page.getByRole("button", { name: "승인 후 반영", exact: true }).click();
   await expect(page.locator(".mail-current-values")).toContainText(
     "검토 중 기존값이 변경",
   );
@@ -213,9 +211,7 @@ test("mail popup → per-person review → stale-value recheck → Kim date upda
     "검토 중 기존값이 변경",
   );
   await page.getByLabel("메일 원문 검토 확인").check();
-  await page
-    .getByRole("button", { name: "승인 · 명단에 반영", exact: true })
-    .click();
+  await page.getByRole("button", { name: "승인 후 반영", exact: true }).click();
   await expect(page.locator(".mail-applied-result")).toContainText("김민수");
   await expect(page.locator(".mail-current-values")).not.toContainText(
     "검토 중 기존값이 변경",
@@ -268,9 +264,7 @@ test("mail popup → per-person review → stale-value recheck → Kim date upda
   );
   await page.getByLabel("메일 원문 검토 확인").check();
   await page.getByLabel("메일 별도 신규 기록 확인").check();
-  await page
-    .getByRole("button", { name: "승인 · 명단에 반영", exact: true })
-    .click();
+  await page.getByRole("button", { name: "승인 후 반영", exact: true }).click();
   await expect(page.locator(".mail-applied-result")).toContainText("이서연");
   await page
     .locator(".mail-applied-result")
@@ -319,7 +313,7 @@ test("date-undecided draft can be edited and held without changing the personnel
   await expect(page.getByLabel("메일 제안 투입일")).toHaveValue("");
   await expect(page.locator(".mail-checks")).toContainText("미정");
   await page.getByLabel("메일 검토 메모").fill("담당자에게 날짜 확정 확인 중");
-  await page.getByRole("button", { name: "검토 보류", exact: true }).click();
+  await page.getByRole("button", { name: "보류", exact: true }).click();
   await expect(page.locator(".mail-detail-heading .mail-status")).toHaveText(
     "검토 보류",
   );
@@ -356,9 +350,7 @@ test("latest reply shows quoted history, extracts one hold request and preserves
     kim = before.people.find((p) => p.name === "김민수");
   await page.getByLabel("메일 반영 인원 선택").selectOption(kim.id);
   await page.getByLabel("메일 원문 검토 확인").check();
-  await page
-    .getByRole("button", { name: "승인 · 명단에 반영", exact: true })
-    .click();
+  await page.getByRole("button", { name: "승인 후 반영", exact: true }).click();
   await expect(page.locator(".mail-applied-result")).toContainText("김민수");
   const current = (await state(page)).people.find((p) => p.id === kim.id);
   expect(current.lifecycle).toBe("투입 보류");
@@ -370,7 +362,7 @@ test("project manager cannot see mail review or sync controls", async ({
   page,
 }) => {
   await login(page, "SFA");
-  await expect(page.locator(".sidebar")).not.toContainText("AI 메일 요청 검토");
+  await expect(page.locator(".sidebar")).not.toContainText("받은편지함");
   await expect(
     page
       .locator(".topbar")

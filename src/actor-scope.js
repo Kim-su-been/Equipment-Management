@@ -10,6 +10,24 @@ export function viewState(store, actor) {
     ids = new Set(people.map((p) => p.id));
   return {
     ...state,
+    referenceIssues:
+      actor.kind === "member"
+        ? []
+        : ["messages", "notifications", "activity"].flatMap((collection) =>
+            (state[collection] || [])
+              .filter(
+                (item) =>
+                  item.personId &&
+                  !state.people.some((p) => p.id === item.personId) &&
+                  (actor.scope === "PMO" || item.project === actor.scope),
+              )
+              .map((item) => ({
+                collection,
+                recordId: item.id,
+                personId: item.personId,
+                project: item.project,
+              })),
+          ),
     people,
     projects: PROJECTS,
     companies: [...new Set(people.map((p) => p.company))],

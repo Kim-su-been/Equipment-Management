@@ -21,7 +21,8 @@ export default function PlanImport({
     [rows, setRows] = useState(null),
     [confirmed, setConfirmed] = useState(false),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [rowFilter, setRowFilter] = useState("all");
   async function run(fn) {
     setBusy(true);
     setError("");
@@ -59,6 +60,19 @@ export default function PlanImport({
       onClose={onClose}
     >
       <div className="import-flow">
+        <ol className="import-steps" aria-label="인력계획서 등록 단계">
+          {["파일 선택", "추출 결과 확인", "등록"].map((label, i) => (
+            <li
+              key={label}
+              className={(rows ? 2 : upload ? 1 : 0) === i ? "active" : ""}
+              aria-current={
+                (rows ? 2 : upload ? 1 : 0) === i ? "step" : undefined
+              }
+            >
+              {i + 1}. {label}
+            </li>
+          ))}
+        </ol>
         <div className="info-note">
           확정한 행만 저장합니다. 같은 이름만으로 기존 인원을 병합하지 않습니다.
           개인별 추가 정보는 초대 링크에서 입력합니다.
@@ -227,6 +241,38 @@ export default function PlanImport({
               값을 수정하거나 제외할 수 있습니다. 생년만 있는 경우 월·일을
               만들지 않으며 본인 등록 시 확인합니다.
             </p>
+            <div
+              className="import-review-filters"
+              role="group"
+              aria-label="추출 행 검토 필터"
+            >
+              {[
+                ["all", "전체"],
+                ["error", "누락·오류"],
+                ["duplicate", "중복 의심"],
+                ["review", "확인 필요"],
+                ["excluded", "제외됨"],
+              ].map(([id, label]) => (
+                <button
+                  key={id}
+                  aria-pressed={rowFilter === id}
+                  onClick={() => setRowFilter(id)}
+                >
+                  {label}{" "}
+                  {
+                    rows.filter(
+                      (r) =>
+                        id === "all" ||
+                        (id === "error" && r.review === "오류") ||
+                        (id === "duplicate" &&
+                          (r.candidates.length || r.sameNameInFile)) ||
+                        (id === "review" && r.review !== "정상") ||
+                        (id === "excluded" && !r.selected),
+                    ).length
+                  }
+                </button>
+              ))}
+            </div>
             <div className="import-table-wrap">
               <table className="import-table">
                 <thead>
@@ -241,6 +287,15 @@ export default function PlanImport({
                 </thead>
                 <tbody>
                   {rows.map((r, index) => {
+                    if (!(
+                      rowFilter === "all" ||
+                      (rowFilter === "error" && r.review === "오류") ||
+                      (rowFilter === "duplicate" &&
+                        (r.candidates.length || r.sameNameInFile)) ||
+                      (rowFilter === "review" && r.review !== "정상") ||
+                      (rowFilter === "excluded" && !r.selected)
+                    ))
+                      return null;
                     const update = (patch) =>
                       setRows((prev) =>
                         prev.map((v, i) => {
