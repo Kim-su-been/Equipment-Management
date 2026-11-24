@@ -1,4 +1,4 @@
-/* Shared work-focused view: keep brand blue for actions, and use neutral surfaces. */
+/* Preserve the current work layout with Woori-inspired blue branding. */
 :root {
   --work-ink: #21384d;
   --work-muted: #50677c;
@@ -15,78 +15,145 @@ body {
   background: #f7f9fb;
 }
 .app-shell > .sidebar {
-  background: #fff;
-  border-right: 1px solid var(--work-line);
+  background: #07558a;
+  color: #fff;
+  border-right: 1px solid #124d78;
   padding-top: 22px;
+  -webkit-text-fill-color: currentColor;
 }
-.app-shell .sidebar .brand-wordmark,
-.app-shell .sidebar .brand small,
+.app-shell .sidebar .brand > span.brand-wordmark {
+  color: #fff;
+  -webkit-text-fill-color: currentColor;
+}
+.app-shell .sidebar .brand-wordmark small,
 .app-shell .sidebar .nav-label,
-.app-shell .sidebar .workspace-label,
-.app-shell .sidebar .sidebar-user strong {
-  color: #26455e;
+.app-shell .sidebar .workspace-label {
+  color: #d4eaf8;
+  -webkit-text-fill-color: currentColor;
+}
+.app-shell .sidebar .workspace-label > span {
+  color: #e5f3fc;
+  border-color: #78accf;
+}
+.app-shell .sidebar .brand-mark,
+.app-shell .sidebar .workspace-icon {
+  background: #fff;
+  color: #0067ac;
+  -webkit-text-fill-color: currentColor;
+}
+.app-shell .sidebar .brand-mark > span {
+  background: #00aec6;
 }
 .app-shell .sidebar .nav-item {
-  color: #415a70;
+  color: #eaf5fd;
   font-size: 14px;
 }
 .app-shell .sidebar .nav-item.active {
-  color: #0067ac;
-  background: #eaf4fc;
-  border: 1px solid #c6dff3;
+  color: #005b98;
+  background: #fff;
+  border: 1px solid #fff;
+  box-shadow: 0 3px 10px #002e4c14;
 }
-.app-shell .sidebar .nav-item:hover {
-  background: #f0f5f9;
+.app-shell .sidebar .nav-item:not(.active):hover {
+  background: #176795;
+  color: #fff;
 }
 .app-shell .sidebar .workspace-switch {
-  background: #f6f8fa;
-  color: #294963;
-  border-color: #dce4ec;
+  background: #176795;
+  color: #fff;
+  border-color: #6397b9;
 }
+.app-shell .sidebar .workspace-switch > span,
 .app-shell .sidebar .workspace-switch strong,
 .app-shell .sidebar .workspace-switch small,
-.app-shell .sidebar .workspace-switch svg {
-  color: #35536d;
+.app-shell .sidebar .workspace-switch svg:last-child {
+  color: #edf7ff;
 }
 .app-shell .sidebar .sidebar-help,
 .app-shell .sidebar .sidebar-user span {
-  color: #486078;
+  color: #dfedf8;
+}
+.app-shell .sidebar .sidebar-user strong {
+  color: #fff;
+}
+.app-shell .sidebar .sidebar-user,
+.app-shell .sidebar .nav-divider {
+  border-color: #4b84a9;
+}
+.app-shell .sidebar .nav-divider {
+  background: #4b84a9;
+}
+.app-shell .sidebar .sidebar-user .icon-btn {
+  color: #eaf5fd;
+}
+.app-shell .sidebar .user-avatar {
+  color: #0067ac;
+  background: #fff;
 }
 .app-shell .sidebar .assistant-entry {
+  position: relative;
+  min-height: 48px;
+  padding-right: 42px;
   margin: 0 0 12px;
-  border: 1px solid #d2dfeb;
-  border-radius: 8px;
-  background: #f6f9fc;
+  border: 1px solid #6aa0c0;
+  border-radius: 10px;
+  background: #176795;
+}
+.assistant-entry .brand-characters {
+  position: absolute;
+  right: 7px;
+  bottom: 3px;
+  width: 29px;
+  height: 40px;
+  --cast-height: 40px;
 }
 .app-shell .topbar {
-  background: #fff;
-  border-bottom: 1px solid var(--work-line);
-  color: #29475f;
+  background: #0067ac;
+  border-bottom: 1px solid #005b96;
+  color: #fff;
   height: 62px;
 }
 .app-shell .topbar .breadcrumb,
 .app-shell .topbar .breadcrumb strong,
 .app-shell .topbar .breadcrumb > span,
+.app-shell .topbar .breadcrumb > svg,
 .app-shell .topbar .icon-btn,
 .app-shell .topbar .scope-selector select {
-  color: #29475f;
+  color: #fff;
 }
 .app-shell .topbar .scope-selector select {
-  background: transparent;
+  background: #0067ac;
+}
+.app-shell .topbar .scope-selector select option {
+  background: #fff;
+  color: #173d5b;
 }
 .topbar .mode-switch {
-  background: #f5f8fb !important;
-  border: 1px solid #d1dfeb !important;
+  background: #005890 !important;
+  border: 1px solid #79afd2 !important;
 }
-.topbar .mode-switch button {
-  color: #35536d !important;
+.topbar .mode-switch button,
+.topbar .mode-switch > span {
+  color: #fff !important;
 }
 .topbar .mode-switch button.selected {
-  background: #eaf4fc !important;
+  background: #fff !important;
   color: #0067ac !important;
 }
 .topbar .header-divider {
-  background: #d2dde6;
+  background: #ffffff50;
+}
+.app-shell .topbar .scope-dot {
+  background: #9fe4ef;
+}
+.app-shell .topbar .top-avatar {
+  color: #0067ac;
+  background: #fff;
+}
+.app-shell .sidebar :is(button, a):focus-visible,
+.app-shell .topbar :is(button, a, select):focus-visible {
+  outline-color: #fff;
+  box-shadow: 0 0 0 1px #0067ac;
 }
 .app-shell .main-content {
   padding: 22px 26px;
@@ -104,11 +171,28 @@ body {
   gap: 18px;
 }
 .work-title {
+  position: relative;
+  isolation: isolate;
   display: flex;
   align-items: center;
   gap: 18px;
   flex-wrap: wrap;
   margin: 0;
+  padding: 15px 20px;
+  border: 1px solid #cbdff0;
+  border-radius: 12px;
+  background: #f1f8fd;
+  overflow: hidden;
+}
+.work-title::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 0 auto;
+  width: 180px;
+  background: #dceef9;
+  clip-path: polygon(42% 0, 100% 0, 100% 100%, 72% 100%, 72% 30%, 12% 30%);
+  pointer-events: none;
 }
 .work-title > div:first-child {
   flex: 1;
@@ -129,13 +213,14 @@ body {
   font-size: 14px;
 }
 .work-title .eyebrow {
+  color: #0067ac;
   font-size: 10px;
   margin-bottom: 5px;
   display: block;
 }
 .work-mascot {
-  width: 80px !important;
-  height: 55px !important;
+  width: 68px !important;
+  height: 58px !important;
   object-fit: contain;
 }
 .work-mascot img {
@@ -1054,22 +1139,6 @@ body {
     font-size: 12px;
   }
 }
-.app-shell .sidebar .brand-mark {
-  background: #0067ac;
-  color: white;
-}
-.app-shell .sidebar .brand-mark > span {
-  background: #00aead;
-}
-.app-shell .sidebar .workspace-icon {
-  background: #e7f3fc;
-  color: #0067ac;
-}
-.app-shell .sidebar .workspace-switch > span,
-.app-shell .sidebar .workspace-switch strong,
-.app-shell .sidebar .workspace-switch svg:last-child {
-  color: #35536d;
-}
 .work-title .work-mascot {
   flex-shrink: 0;
 }
@@ -1094,22 +1163,6 @@ body {
   .work-action > .btn {
     min-height: 35px;
   }
-}
-.app-shell > .sidebar {
-  color: #29475f;
-  -webkit-text-fill-color: currentColor;
-}
-.app-shell .sidebar .brand > span.brand-wordmark {
-  color: #17466c;
-  -webkit-text-fill-color: currentColor;
-}
-.app-shell .sidebar .brand-wordmark small {
-  color: #48647d;
-  -webkit-text-fill-color: currentColor;
-}
-.app-shell .sidebar .brand-mark {
-  color: white;
-  -webkit-text-fill-color: currentColor;
 }
 .app-shell .sidebar .nav-item svg,
 .app-shell .sidebar .sidebar-help svg {
@@ -1137,4 +1190,60 @@ body {
 .app-shell .course-info p,
 .app-shell .profile-assignment-grid small {
   color: #4e687e;
+}
+
+/* Brand details stay inside the existing work cards and compact headings. */
+.work-mascot.cast-group {
+  width: 166px !important;
+  height: 58px !important;
+}
+.work-stat {
+  border-color: #cbdfee;
+  border-top: 3px solid #0067ac;
+  background: #fff linear-gradient(135deg, #fff 60%, #edf7fd);
+  border-radius: 12px;
+}
+.work-stat:nth-child(2) {
+  border-top-color: #a66a13;
+}
+.work-stat:nth-child(3) {
+  border-top-color: #008c89;
+}
+.work-stat:nth-child(4) {
+  border-top-color: #253a71;
+}
+.work-stat strong {
+  color: #0067ac;
+}
+.work-stat:nth-child(2) strong {
+  color: #8b5505;
+}
+.work-stat:nth-child(3) strong {
+  color: #006d6b;
+}
+.work-stat:nth-child(4) strong {
+  color: #253a71;
+}
+.work-card {
+  border-color: #d0e1ee;
+  border-radius: 12px;
+}
+.work-card-heading h2 {
+  border-left: 3px solid #00aec6;
+  padding-left: 10px;
+}
+.work-progress > i {
+  background: #0067ac;
+}
+.work-title > div:first-child {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 750px) {
+  .work-title {
+    padding: 14px;
+  }
+  .work-mascot.cast-group {
+    width: 108px !important;
+    height: 40px !important;
+  }
 }

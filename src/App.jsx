@@ -2581,6 +2581,7 @@ export default function App({ initialState, actor, onLogout }) {
           >
             <Sparkles size={18} />
             <span>AI 업무 도우미</span>
+            <BrandCharacters focus="guide" />
           </button>
           <button
             className="sidebar-help"

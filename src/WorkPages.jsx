@@ -110,7 +110,7 @@ export function WorkDashboard({
             지금 필요한 조치를 확인하세요.
           </p>
         </div>
-        <BrandCharacters focus="guide" className="work-mascot" />
+        <BrandCharacters className="work-mascot" />
         {canImport && btn("인력계획서 불러오기", onImport, true)}
       </header>
       <div className="work-stats">

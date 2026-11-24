@@ -101,31 +101,69 @@ try {
   await context.setOffline(true);
   await mkdir("artifacts", { recursive: true });
   const contrasts = await page.evaluate(() => {
-    const luminance = (color) => {
-      const nums = color
-        .match(/\d+(?:\.\d+)?/g)
+    const rgba = (value) => value.match(/\d+(?:\.\d+)?/g).map(Number);
+    const blend = (foreground, background) => {
+      const alpha = foreground[3] ?? 1;
+      return foreground
         .slice(0, 3)
-        .map(Number)
-        .map((n) => {
-          n /= 255;
-          return n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
-        });
+        .map((n, i) => n * alpha + background[i] * (1 - alpha));
+    };
+    const luminance = (rgb) => {
+      const nums = rgb.slice(0, 3).map((n) => {
+        n /= 255;
+        return n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
+      });
       return 0.2126 * nums[0] + 0.7152 * nums[1] + 0.0722 * nums[2];
     };
     return [
       ".brand-wordmark",
       ".sidebar .nav-item:not(.active)",
+      ".topbar .breadcrumb strong",
       ".work-title p",
       ".work-stat",
     ].map((selector) => {
-      const c = getComputedStyle(document.querySelector(selector));
-      const color = c.webkitTextFillColor || c.color;
-      const l = luminance(color);
-      return { selector, ratio: 1.05 / (l + 0.05) };
+      const element = document.querySelector(selector),
+        ancestors = [];
+      for (let node = element; node; node = node.parentElement)
+        ancestors.unshift(node);
+      const background = ancestors.reduce(
+        (rgb, node) => blend(rgba(getComputedStyle(node).backgroundColor), rgb),
+        [255, 255, 255],
+      );
+      const c = getComputedStyle(element);
+      const foreground = blend(
+        rgba(c.webkitTextFillColor || c.color),
+        background,
+      );
+      const values = [luminance(foreground), luminance(background)].sort(
+        (a, b) => b - a,
+      );
+      return { selector, ratio: (values[0] + 0.05) / (values[1] + 0.05) };
     });
   });
   for (const c of contrasts)
     assert.ok(c.ratio >= 4.5, `${c.selector} contrast ${c.ratio}`);
+  assert.equal(
+    await page
+      .locator(".sidebar")
+      .evaluate((e) => getComputedStyle(e).backgroundColor),
+    "rgb(7, 85, 138)",
+  );
+  assert.equal(
+    await page
+      .locator(".topbar")
+      .evaluate((e) => getComputedStyle(e).backgroundColor),
+    "rgb(0, 103, 172)",
+  );
+  await expect(
+    page.locator(".dashboard-work .work-mascot.cast-group img"),
+  ).toBeVisible();
+  await expect(page.locator(".assistant-entry .cast-guide img")).toBeVisible();
+  assert.ok(
+    await page
+      .locator(".dashboard-work .work-mascot img")
+      .evaluate((e) => e.complete && e.naturalWidth > 0),
+  );
   const initial = await state(),
     count = summaryCounts(initial.people, initial, [], "2026-11-23");
   for (const p of initial.people)
