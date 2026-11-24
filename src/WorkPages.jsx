@@ -14,6 +14,8 @@ import {
   ClipboardList,
 } from "lucide-react";
 import BrandCharacters from "./BrandCharacters.jsx";
+import MemberRoadmap from "./MemberRoadmap.jsx";
+import { memberRoadmap } from "./member-roadmap.js";
 import { STATUS, PROJECTS } from "./data.js";
 import {
   businessDate,
@@ -817,8 +819,9 @@ export function MemberDashboard({
 }) {
   const s = personState(person, data),
     rows = taskRows([person], data),
-    mine = rows.filter((r) => r.owner === "member" && !r.done && r.actionable),
-    fix = rows.filter((r) => r.status === "fix" && r.task.kind),
+    roadmap = memberRoadmap(person, data),
+    mine = roadmap.mine,
+    fix = roadmap.fixes.filter((r) => r.task.kind),
     host = rows.filter((r) => r.owner === "admin" && !r.done);
   return (
     <div className="work-page member-work">
@@ -839,14 +842,17 @@ export function MemberDashboard({
         )}
         <BrandCharacters focus="guide" className="work-mascot" />
       </header>
-      <section className="member-preparation">
-        <Preparation person={person} data={data} />
-        {s.overdue && (
-          <span className="work-alert">
-            예정일 경과 · 투입 여부를 담당자가 확인 중입니다.
-          </span>
-        )}
-      </section>
+      <MemberRoadmap
+        roadmap={roadmap}
+        onTask={(id) => onTask(person, id)}
+        onProfile={() => onPage("profile")}
+        onContinue={onContinue}
+      />
+      {s.overdue && (
+        <div className="work-alert">
+          예정일 경과 · 투입 여부를 담당자가 확인 중입니다.
+        </div>
+      )}
       {fix.length > 0 && (
         <section className="work-alert">
           <b>보완 요청 {fix.length}건</b>
@@ -889,12 +895,59 @@ export function MemberDashboard({
             {actionFor(person, r.task)}
           </article>
         ))}
-        {!mine.length && (
-          <p className="work-empty">
-            {s.ready
-              ? "필수 준비가 충족되었습니다. 담당자의 최종 확인과 투입 안내를 기다려 주세요."
-              : "현재 실행할 작업이 없습니다. 아래 주관사 준비 현황을 확인해 주세요."}
-          </p>
+        {!mine.length && <p className="work-empty">{roadmap.note}</p>}
+        {roadmap.waiting.length > 0 && (
+          <details className="completed-work member-waiting-work">
+            <summary>대기·검토 중인 내 작업 {roadmap.waiting.length}건</summary>
+            {roadmap.waiting.map((r) => (
+              <article className="work-task-row" key={r.task.id}>
+                <div>
+                  <b>{r.task.title}</b>
+                  <span>
+                    기한 {date(r.due)} ·{" "}
+                    {r.status === "on_hold"
+                      ? "투입·작업 보류"
+                      : r.owner === "admin"
+                        ? "주관사에서 검토 중"
+                        : "선행 작업 대기"}
+                  </span>
+                  {r.blockedBy.length > 0 && r.status === "waiting" && (
+                    <div className="dependency-reason">
+                      대기 중인 이유:{" "}
+                      {r.blockedBy.map((id) => (
+                        <button
+                          className="text-link"
+                          key={id}
+                          onClick={() => onTask(person, id)}
+                        >
+                          {rows.find((row) => row.task.id === id)?.task.title ||
+                            "선행 작업"}{" "}
+                          확인
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <WorkBadge status={r.status} />
+                {btn("상세 보기", () => onTask(person, r.task.id))}
+              </article>
+            ))}
+          </details>
+        )}
+        {roadmap.completed.length > 0 && (
+          <details className="completed-work member-completed-work">
+            <summary>완료한 내 작업 {roadmap.completed.length}건</summary>
+            {roadmap.completed.map((r) => (
+              <article className="work-task-row" key={r.task.id}>
+                <div>
+                  <b>{r.task.title}</b>
+                  <span>본인 작업 완료</span>
+                </div>
+                <WorkBadge status="done" />
+                {btn("상세 보기", () => onTask(person, r.task.id))}
+              </article>
+            ))}
+          </details>
         )}
       </section>
       <div className="member-overview-links">
@@ -908,7 +961,13 @@ export function MemberDashboard({
                     r.task.kind === (i ? "document" : "education") && r.done,
                 ).length
               }{" "}
-              / 2 완료
+              /{" "}
+              {
+                rows.filter(
+                  (r) => r.task.kind === (i ? "document" : "education"),
+                ).length
+              }{" "}
+              완료
             </span>
             <ArrowRight size={16} />
           </button>

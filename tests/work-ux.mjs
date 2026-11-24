@@ -311,6 +311,64 @@ try {
   await expect(
     page.getByRole("button", { name: "내 등록 이어하기", exact: true }),
   ).toHaveCount(0);
+  await expect(page.locator(".member-roadmap")).toBeVisible();
+  await expect(page.locator(".roadmap-steps > li")).toHaveCount(5);
+  await expect(page.locator(".roadmap-stage-detail")).not.toHaveAttribute(
+    "open",
+    "",
+  );
+  await page.screenshot({
+    path: "artifacts/member-roadmap-initial.png",
+    fullPage: true,
+  });
+  await expect(page.locator('[aria-current="step"]')).toContainText(
+    "교육·서류 제출",
+  );
+  await page
+    .getByRole("button", { name: "본인 등록 단계 보기", exact: true })
+    .click();
+  await expect(page.locator(".roadmap-stage-detail")).toContainText(
+    "본인 정보 등록",
+  );
+  await page
+    .getByRole("button", { name: "현재 단계 보기", exact: true })
+    .click();
+  await expect(page.locator(".roadmap-stage-detail")).toContainText(
+    "보안서약서",
+  );
+  await page
+    .locator(".roadmap-stage-detail")
+    .getByRole("button", { name: "보안서약서 작업 상세보기", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toContainText("보안서약서");
+  await page.getByRole("dialog").getByLabel("닫기", { exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.mouse.move(380, 90);
+  assert.ok(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  );
+  await page
+    .getByRole("button", { name: "계정 준비 단계 보기", exact: true })
+    .click();
+  await expect(page.locator(".roadmap-stage-detail")).toContainText(
+    "계정 최초 접속",
+  );
+  await page.mouse.move(380, 90);
+  await page.waitForTimeout(350);
+  await page.screenshot({
+    path: "artifacts/member-roadmap-mobile.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page
+    .getByRole("button", { name: "현재 단계 보기", exact: true })
+    .click();
+  await page.screenshot({
+    path: "artifacts/member-roadmap-desktop.png",
+    fullPage: true,
+  });
   await nav("서류");
   await page.locator(".document-tile").first().getByRole("button").click();
   await submitDocument("김민수");
@@ -333,6 +391,12 @@ try {
     .toBe("fix");
   await chooseDemoRole(page, "member", kim.id);
   await expect(page.locator(".member-work")).toContainText("보완 요청");
+  await expect(page.locator('[aria-current="step"]')).toContainText(
+    "보완 필요",
+  );
+  await expect(page.locator(".roadmap-stage-detail")).toContainText(
+    "보완 요청",
+  );
   await page
     .getByRole("button", { name: "보안서약서 수정·재제출", exact: true })
     .click();
