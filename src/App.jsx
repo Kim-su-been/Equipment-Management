@@ -84,6 +84,10 @@ import LegacyMigration from "./LegacyMigration.jsx";
 import OnlineDocument from "./OnlineDocument.jsx";
 import { loadDocumentBackground } from "./document-templates.js";
 import TaskExportForm from "./TaskExportForm.jsx";
+import { RoadmapStageDetails } from "./MemberRoadmap.jsx";
+import { memberRoadmap } from "./member-roadmap.js";
+import DraftCompletionControls from "./DraftCompletionControls.jsx";
+import { recordDraftCompletion } from "./drafting.js";
 import EvidenceManager from "./EvidenceManager.jsx";
 import ContactRoutes from "./ContactRoutes.jsx";
 import StoredEvidence from "./StoredEvidence.jsx";
@@ -124,12 +128,16 @@ const MEMBER_NAV = [
   ["dashboard", "나의 투입 준비", LayoutDashboard],
   ["profile", "내 정보", UserRound],
   ["tasks", "나의 작업", ClipboardList],
-  ["education", "교육", GraduationCap],
-  ["documents", "서류", FileText],
   ["messages", "문의·변경 요청", MessageSquare],
 ];
 const titleMap = Object.fromEntries(
-  [...NAV, ...MEMBER_NAV, ["settings", "운영 기준"]].map(([k, t]) => [k, t]),
+  [
+    ...NAV,
+    ...MEMBER_NAV,
+    ["education", "교육"],
+    ["documents", "서류"],
+    ["settings", "운영 기준"],
+  ].map(([k, t]) => [k, t]),
 );
 const taskLabel = (id) => TASKS.find((t) => t.id === id)?.title || id;
 const cx = (...a) => a.filter(Boolean).join(" ");
@@ -981,6 +989,24 @@ export default function App({ initialState, actor, onLogout }) {
       </>
     );
   }
+  async function saveDraftRecord(selection) {
+    try {
+      await mutate((d) => {
+        const changed = recordDraftCompletion(d, scope, selection, actor.scope);
+        if (changed)
+          audit(
+            d,
+            `기안 작성 ${selection.done ? "완료 기록" : "기록 취소"}`,
+            `${taskLabel(selection.taskId)} · ${changed}명`,
+          );
+      });
+      notify(
+        `기안 작성 ${selection.done ? "완료를 기록" : "완료 기록을 취소"}했습니다. 계정 신청 상태는 별도로 관리됩니다.`,
+      );
+    } catch (error) {
+      notify(error.message);
+    }
+  }
   function Tasks() {
     return (
       <TaskBoard
@@ -988,6 +1014,7 @@ export default function App({ initialState, actor, onLogout }) {
         people={scoped}
         admin={admin}
         scope={scope}
+        onDraftRecord={saveDraftRecord}
         onTask={openWorkTask}
         onInvite={invitePeople}
         actionFor={actionFor}
@@ -1433,6 +1460,9 @@ export default function App({ initialState, actor, onLogout }) {
         onTask={openWorkTask}
         actionFor={actionFor}
         onContinue={() => setModal({ type: "continueRegistration" })}
+        onStage={(stage) =>
+          setModal({ type: "roadmapStage", id: member.id, stage })
+        }
       />
     );
   }
@@ -2096,6 +2126,37 @@ export default function App({ initialState, actor, onLogout }) {
           onClose={close}
         />
       );
+    if (modal.type === "roadmapStage" && !admin && p?.id === member.id) {
+      const roadmap = memberRoadmap(p, data);
+      const stage = roadmap.stages.find((item) => item.id === modal.stage);
+      if (!stage) return null;
+      return (
+        <Modal
+          title={`${stage.title} · 단계 상세`}
+          subtitle="현재 상태와 담당 주체를 확인하고 작업을 선택하세요."
+          onClose={close}
+          wide
+          className="roadmap-stage-popup"
+        >
+          <div className="modal-body">
+            <RoadmapStageDetails
+              stage={stage}
+              onTask={(id) => openWorkTask(p, id)}
+              onProfile={() => {
+                close();
+                go("profile");
+              }}
+              onContinue={() => setModal({ type: "continueRegistration" })}
+            />
+          </div>
+          <footer>
+            <button className="btn" onClick={close}>
+              닫기
+            </button>
+          </footer>
+        </Modal>
+      );
+    }
     if (modal.type === "taskExport" && admin)
       return (
         <TaskExportForm
@@ -2197,6 +2258,13 @@ export default function App({ initialState, actor, onLogout }) {
               <ClipboardList size={28} />
             </div>
             <p className="lead">{task.desc}</p>
+            {admin && (
+              <DraftCompletionControls
+                person={p}
+                taskId={task.id}
+                onRecord={saveDraftRecord}
+              />
+            )}
             {task.due && (
               <p className="task-deadline">처리 기한: {fmt(task.due)}</p>
             )}
@@ -2554,17 +2622,44 @@ export default function App({ initialState, actor, onLogout }) {
         </div>
         <nav>
           {nav.map(([id, label, Icon]) => (
-            <button
-              key={id}
-              aria-label={label}
-              className={cx("nav-item", page === id && "active")}
-              onClick={() => go(id)}
-            >
-              <Icon size={19} />
-              <span>{label}</span>
-              {id === "reviews" && reviewCount > 0 && <b>{reviewCount}</b>}
-              {page === id && <i />}
-            </button>
+            <React.Fragment key={id}>
+              <button
+                aria-label={label}
+                className={cx(
+                  "nav-item",
+                  (page === id ||
+                    (!admin &&
+                      id === "tasks" &&
+                      ["education", "documents"].includes(page))) &&
+                    "active",
+                )}
+                onClick={() => go(id)}
+              >
+                <Icon size={19} />
+                <span>{label}</span>
+                {id === "reviews" && reviewCount > 0 && <b>{reviewCount}</b>}
+                {page === id && <i />}
+              </button>
+              {!admin && id === "tasks" && (
+                <div className="member-subnav" aria-label="나의 작업 하위 메뉴">
+                  {[
+                    ["education", "교육", GraduationCap],
+                    ["documents", "서류", FileText],
+                  ].map(([key, text, SubIcon]) => (
+                    <button
+                      key={key}
+                      aria-label={text}
+                      aria-current={page === key ? "page" : undefined}
+                      className={cx("nav-item", page === key && "active")}
+                      onClick={() => go(key)}
+                    >
+                      <SubIcon size={16} />
+                      <span>{text}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </React.Fragment>
           ))}
         </nav>
         {admin && (
@@ -2736,6 +2831,24 @@ export default function App({ initialState, actor, onLogout }) {
             admin ? `${mode}-${scope}-${page}` : `${mode}-${member.id}-${page}`
           }
         >
+          {!admin && ["tasks", "education", "documents"].includes(page) && (
+            <nav className="member-task-tabs" aria-label="나의 작업 하위 탭">
+              {[
+                ["tasks", "작업 목록"],
+                ["education", "교육"],
+                ["documents", "서류"],
+              ].map(([key, label]) => (
+                <button
+                  key={key}
+                  className={page === key ? "active" : ""}
+                  aria-current={page === key ? "page" : undefined}
+                  onClick={() => go(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </nav>
+          )}
           {admin ? (
             page === "dashboard" ? (
               Dashboard()

@@ -35,6 +35,7 @@ test("six account templates use selected real people and system-specific fields"
     assert.ok(Object.values(result.rows[0]).includes(person.name));
     assert.ok(TASK_EXPORTS[taskId]);
   }
+  person.tasks["P-DBUSER"] = "ready";
   const result = taskExportRows(data, "PMO", {
     project: "전체",
     taskId: "P-DBUSER",
@@ -77,10 +78,14 @@ test("batch export rejects stale completed, held, pending and out-of-scope peopl
   person.tasks[selection.taskId] = "done";
   assert.throws(() => taskExportRows(data, "SFA", selection), /완료/);
 });
-test("new procedure tasks keep existing required readiness and education precedes a new pledge", () => {
+test("six mandatory account tasks determine readiness and education precedes a new pledge", () => {
   const { person } = fixture();
   assert.equal(progress(person), 100);
   assert.equal(isPrepared(person), true);
+  delete person.tasks["P-DBUSER"];
+  assert.equal(isPrepared(person), false);
+  assert.ok(progress(person) < 100);
+  person.tasks["P-DBUSER"] = "done";
   person.tasks.O10 = "ready";
   delete person.tasks.O08;
   assert.equal(taskStatus(person, "O10"), "waiting");

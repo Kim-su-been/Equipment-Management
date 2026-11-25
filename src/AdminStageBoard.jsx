@@ -1,16 +1,7 @@
 import React from "react";
 import { CheckCircle2, ArrowRight } from "lucide-react";
 import { adminStageGroups } from "./admin-stage-groups.js";
-
-const descriptions = {
-  registration: "초대 · 본인 정보 입력",
-  accounts: "신청 · 발급 · 최초 접속",
-  submission: "교육 수료 · 서류 제출 · 보완",
-  review: "제출 원본 확인 · 승인",
-  final: "출입 준비 · 최종 확인",
-};
-const date = (value) => (value ? value.replaceAll("-", ".") : "미정");
-
+const date = (s) => (s ? s.replaceAll("-", ".") : "미정");
 export default function AdminStageBoard({
   people,
   data,
@@ -24,45 +15,102 @@ export default function AdminStageBoard({
   onRepair,
 }) {
   const groups = adminStageGroups(people, data, scope, today);
-  const completed = groups[4].people.filter((r) => r.final).length;
   function action(entry) {
-    const { person, identity, state, stage, next } = entry;
-    if (identity.missing)
-      return { label: "인원 정보 복구", run: () => onRepair(person.id) };
+    if (entry.identity.missing)
+      return { label: "인원 정보 복구", run: () => onRepair(entry.person.id) };
     if (entry.held)
-      return { label: "보류 내용 보기", run: () => onOpen(person) };
-    if (stage.id === "registration")
-      return canInvite
-        ? { label: "초대 링크 보기", run: () => onInvite(person.id) }
-        : { label: "등록 상태 보기", run: () => onOpen(person) };
-    if (entry.final)
-      return state.overdue
-        ? { label: "투입 상태 변경", run: () => onLifecycle(person) }
-        : { label: "인원 상세 보기", run: () => onOpen(person) };
-    if (next?.owner === "admin" && next.actionable)
+      return { label: "보류 내용 보기", run: () => onOpen(entry.person) };
+    if (!entry.state.registered)
+      return {
+        label: canInvite ? "초대 링크 보기" : "등록 상태 보기",
+        run: () =>
+          canInvite ? onInvite(entry.person.id) : onOpen(entry.person),
+      };
+    if (entry.draftPending)
+      return {
+        label: "기안 작성 기록",
+        run: () => onTask(entry.person, entry.next.task.id),
+      };
+    if (entry.phaseComplete)
       return {
         label:
-          next.task.id === "O16"
-            ? "최종 준비 확인"
-            : stage.id === "review"
-              ? "제출물 검토"
-              : "준비 작업 보기",
-        run: () => onTask(person, next.task.id),
+          entry.state.overdue || entry.exitOverdue
+            ? "투입 상태 변경"
+            : "인원 상세 보기",
+        run: () =>
+          entry.state.overdue || entry.exitOverdue
+            ? onLifecycle(entry.person)
+            : onOpen(entry.person),
       };
-    return { label: "진행 상태 보기", run: () => onOpen(person) };
+    if (entry.next)
+      return {
+        label: ["review", "error"].includes(entry.next.status)
+          ? "제출물 검토"
+          : "작업 상세 보기",
+        run: () => onTask(entry.person, entry.next.task.id),
+      };
+    return { label: "인원 상세 보기", run: () => onOpen(entry.person) };
+  }
+  function personCard(entry) {
+    const { person, identity } = entry,
+      next = action(entry);
+    return (
+      <li
+        className={`stage-person ${entry.phaseComplete ? "confirmed" : entry.held ? "held" : ""}`}
+        key={person.id}
+      >
+        <button
+          className="stage-person-profile"
+          aria-label={`${identity.name} 인원 상세 보기`}
+          onClick={() =>
+            identity.missing ? onRepair(person.id) : onOpen(person)
+          }
+        >
+          <strong>
+            {identity.name}
+            {entry.phaseComplete && <CheckCircle2 size={14} />}
+          </strong>
+          <span>{identity.company}</span>
+          <small>
+            {identity.project} · 투입 {date(person.start)}
+          </small>
+        </button>
+        <div className="stage-person-footer">
+          <span
+            className={`work-badge ${entry.phaseComplete ? "green" : entry.held || entry.exitOverdue ? "orange" : entry.needsFix ? "red" : "gray"}`}
+          >
+            {entry.phaseComplete
+              ? "단계 완료"
+              : entry.held
+                ? "투입 보류"
+                : entry.exitOverdue
+                  ? "종료일 경과"
+                  : entry.draftPending
+                    ? "기안 기록 대기"
+                    : entry.needsFix
+                      ? "보완 필요"
+                      : "진행 필요"}
+          </span>
+          <button className="stage-person-action" onClick={next.run}>
+            {next.label}
+            <ArrowRight size={13} />
+          </button>
+        </div>
+      </li>
+    );
   }
   return (
     <>
       <div className="admin-stage-summary">
-        <span>
-          최종 확인 완료 <b>{completed}명</b>
-        </span>
         <p>
-          진행할 작업이 있는 단계에 인원을 표시합니다. 병행 작업이 있으면 여러
-          단계에 함께 표시되며, 단계별 인원 수는 중복될 수 있습니다.
+          준비 작업과 같은 투입·수행·철수 단계입니다. 세부 업무를 펼쳐 대상
+          인원을 확인하세요. 병행 업무는 여러 단계에 표시될 수 있습니다.
         </p>
       </div>
-      <ol className="admin-stage-board" aria-label="단계별 준비 인원">
+      <ol
+        className="admin-stage-board procedure-stage-board"
+        aria-label="단계별 준비 인원"
+      >
         {groups.map((group, index) => (
           <li
             key={group.id}
@@ -75,83 +123,52 @@ export default function AdminStageBoard({
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <strong>
-                  {group.people.length}
-                  <small>명</small>
+                  {group.percent ?? "—"}
+                  {group.percent !== null && <small>%</small>}
                 </strong>
               </div>
               <h3>{group.title}</h3>
-              <p>{descriptions[group.id]}</p>
-            </header>
-            <ul
-              className="admin-stage-people"
-              aria-label={`${group.title} 인원`}
-            >
-              {group.people.map((entry) => {
-                const { identity, person, state } = entry;
-                const nextAction = action(entry);
-                return (
-                  <li
-                    className={`stage-person ${entry.final ? "confirmed" : entry.held ? "held" : ""}`}
-                    key={person.id}
-                  >
-                    <button
-                      className="stage-person-profile"
-                      aria-label={`${identity.name} 인원 상세 보기`}
-                      onClick={() =>
-                        identity.missing ? onRepair(person.id) : onOpen(person)
-                      }
-                    >
-                      <strong>
-                        {identity.name}
-                        {entry.final && <CheckCircle2 size={14} />}
-                      </strong>
-                      <span>{identity.company}</span>
-                      <small>
-                        {identity.project} · 투입 {date(person.start)}
-                      </small>
-                    </button>
-                    <div className="stage-person-footer">
-                      <div className="stage-person-flags">
-                        {entry.held ? (
-                          <span className="work-badge orange">투입 보류</span>
-                        ) : entry.final ? (
-                          <span className="work-badge green">
-                            준비 확인 완료
-                          </span>
-                        ) : entry.needsFix ? (
-                          <span className="work-badge red">보완 필요</span>
-                        ) : state.overdue ? (
-                          <span className="work-badge orange">예정일 경과</span>
-                        ) : state.imminent ? (
-                          <span className="work-badge orange">투입 임박</span>
-                        ) : (
-                          <span className="stage-person-remaining">
-                            남은 {entry.remaining}건
-                          </span>
-                        )}
-                      </div>
-                      <button
-                        className="stage-person-action"
-                        onClick={nextAction.run}
-                      >
-                        {nextAction.label}
-                        <ArrowRight size={13} />
-                      </button>
-                    </div>
-                    {entry.final && state.overdue && !entry.held && (
-                      <span className="stage-lifecycle-alert">
-                        예정일 경과 · 투입 여부 확인 필요
-                      </span>
-                    )}
-                  </li>
-                );
-              })}
-              {!group.people.length && (
-                <li className="stage-empty">
-                  이 단계에 해당하는 인원이 없습니다.
-                </li>
+              <p>
+                완료 {group.completed}명 / 대상 {group.people.length}명
+              </p>
+              <p>{group.description}</p>
+              {group.id === "exit" && (
+                <small className="phase-exit-note">
+                  철수 지정 또는 종료 임박 인원 기준
+                </small>
               )}
-            </ul>
+            </header>
+            {group.steps.map((step) => (
+              <details
+                className="phase-person-step"
+                key={step.id}
+                data-phase-task={step.id}
+              >
+                <summary>
+                  <span>{step.title}</span>
+                  <b>{step.people.length}명</b>
+                </summary>
+                <ul className="admin-stage-people">
+                  {step.people.map(personCard)}
+                  {!step.people.length && (
+                    <li className="stage-empty">
+                      이 업무에 남은 대상 인원이 없습니다.
+                    </li>
+                  )}
+                </ul>
+              </details>
+            ))}
+            {group.completed > 0 && (
+              <details className="phase-person-step phase-completed">
+                <summary>
+                  <span>단계 완료 인원</span>
+                  <b>{group.completed}명</b>
+                </summary>
+                <ul className="admin-stage-people">
+                  {group.people.filter((p) => p.phaseComplete).map(personCard)}
+                </ul>
+              </details>
+            )}
           </li>
         ))}
       </ol>

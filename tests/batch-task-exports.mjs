@@ -93,6 +93,49 @@ try {
     before.people,
     "download must not complete tasks",
   );
+  // Draft completion is explicit and independent of the exported workbook/account status.
+  await g
+    .getByRole("button", { name: "선택 인원 기안 작성 완료 기록", exact: true })
+    .click();
+  await expect
+    .poll(
+      async () =>
+        (await state()).people.filter(
+          (p) => names.includes(p.name) && p.drafting?.O02?.done,
+        ).length,
+    )
+    .toBe(2);
+  for (const p of (await state()).people)
+    assert.deepEqual(
+      p.tasks,
+      before.people.find((old) => old.id === p.id).tasks,
+    );
+  await g
+    .getByRole("button", {
+      name: `${names[0]} · 기안 완료 기록 취소`,
+      exact: true,
+    })
+    .click();
+  await expect
+    .poll(
+      async () =>
+        (await state()).people.find((p) => p.name === names[0]).drafting?.O02
+          ?.done,
+    )
+    .toBe(false);
+  await g
+    .getByRole("button", {
+      name: `${names[0]} · 기안 작성 완료 기록`,
+      exact: true,
+    })
+    .click();
+  await expect
+    .poll(
+      async () =>
+        (await state()).people.find((p) => p.name === names[0]).drafting?.O02
+          ?.done,
+    )
+    .toBe(true);
   g = await openGroup("P-DBUSER");
   await g.locator('input[type="checkbox"]:not(:disabled)').first().check();
   await g
@@ -187,6 +230,13 @@ try {
     ),
   );
   await page.screenshot({ path: "artifacts/batch-tasks-mobile.png" });
+  await page.reload();
+  await expect(page.locator(".sidebar")).toBeVisible();
+  assert.ok(
+    (await state()).people
+      .filter((p) => names.includes(p.name))
+      .every((p) => p.drafting?.O02?.done === true),
+  );
   assert.deepEqual(errors, []);
   assert.deepEqual(network, []);
   console.log(

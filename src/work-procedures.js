@@ -26,7 +26,7 @@ export const PROCEDURE_TASKS = [
     group: "계정 준비",
     procedurePhase: "entry",
     deps: ["O01"],
-    required: false,
+    required: true,
     desc: "신청이 필요한 인원을 선택해 기안 첨부용 예시 엑셀을 작성합니다. 사내 결재·계정 발급 결과를 확인한 뒤 완료 처리하세요.",
   }))
   .concat(
@@ -69,3 +69,9 @@ export const PROCEDURE_STEPS = [
 ];
 export const procedureStep = (id) =>
   PROCEDURE_STEPS.find((step) => step.taskId === id);
+export const DRAFT_TASK_IDS = [
+  "O02",
+  ...PROCEDURE_TASKS.filter((t) => t.procedurePhase === "entry").map(
+    (t) => t.id,
+  ),
+];

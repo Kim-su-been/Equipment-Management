@@ -1,3 +1,4 @@
+import { personCompletion } from "./completion-metrics.js";
 import {
   tasksForPerson,
   requiredTasks,
@@ -240,6 +241,10 @@ export function matchesPerson(p, data, filters, today = businessDate()) {
   const s = personState(p, data, today),
     q = (filters.search || "").toLowerCase();
   return (
+    (!filters.completionMetric ||
+      filters.completionMetric === "전체" ||
+      personCompletion(p, data, filters.completionMetric) ===
+        (filters.completionState === "complete")) &&
     (!q ||
       [p.name, p.displayId, p.company, p.role]
         .join(" ")

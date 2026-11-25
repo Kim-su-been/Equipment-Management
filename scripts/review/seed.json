@@ -79,7 +79,12 @@
                 "O11": "done",
                 "O12": "done",
                 "O13": "done",
-                "O16": "done"
+                "O16": "done",
+                "P-PASSWORD": "done",
+                "P-DBSAFER": "done",
+                "P-DBUSER": "done",
+                "P-NGS": "done",
+                "P-SOFTMANAGER": "done"
               },
               "files": {
                 "O08": {
@@ -118,7 +123,39 @@
               "legacyId": "SFA-1",
               "projectId": "project-1",
               "companyId": "5f2a63b4-8aae-43be-89dd-45a21995866b",
-              "recordVersion": 1
+              "recordVersion": 1,
+              "drafting": {
+                "O02": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-PASSWORD": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-DBSAFER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-DBUSER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-NGS": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-SOFTMANAGER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                }
+              }
             },
             {
               "id": "f422425f-2a09-5b56-aa19-647602d253ec",
@@ -140,7 +177,12 @@
                 "O08": "done",
                 "O09": "done",
                 "O10": "ai",
-                "O11": "ai"
+                "O11": "ai",
+                "P-PASSWORD": "done",
+                "P-DBSAFER": "done",
+                "P-DBUSER": "done",
+                "P-NGS": "done",
+                "P-SOFTMANAGER": "done"
               },
               "files": {
                 "O08": {
@@ -179,7 +221,39 @@
               "legacyId": "SFA-2",
               "projectId": "project-1",
               "companyId": "5f2a63b4-8aae-43be-89dd-45a21995866b",
-              "recordVersion": 1
+              "recordVersion": 1,
+              "drafting": {
+                "O02": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-PASSWORD": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-DBSAFER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-DBUSER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-NGS": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-SOFTMANAGER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                }
+              }
             },
             {
               "id": "f4503149-3fa2-564a-a882-47cbcb58e874",
@@ -197,7 +271,12 @@
                 "O03": "done",
                 "O04": "done",
                 "O05": "done",
-                "O06": "done"
+                "O06": "done",
+                "P-PASSWORD": "done",
+                "P-DBSAFER": "done",
+                "P-DBUSER": "done",
+                "P-NGS": "done",
+                "P-SOFTMANAGER": "done"
               },
               "files": {},
               "certChecks": {},
@@ -208,7 +287,39 @@
               "legacyId": "SFA-3",
               "projectId": "project-1",
               "companyId": "5f2a63b4-8aae-43be-89dd-45a21995866b",
-              "recordVersion": 1
+              "recordVersion": 1,
+              "drafting": {
+                "O02": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-PASSWORD": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-DBSAFER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-DBUSER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-NGS": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-SOFTMANAGER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                }
+              }
             },
             {
               "id": "8c5821bb-5c0e-5cd8-a3f8-5be50dd88bc1",
@@ -285,7 +396,12 @@
                 "O11": "done",
                 "O12": "done",
                 "O13": "done",
-                "O16": "done"
+                "O16": "done",
+                "P-PASSWORD": "done",
+                "P-DBSAFER": "done",
+                "P-DBUSER": "done",
+                "P-NGS": "done",
+                "P-SOFTMANAGER": "done"
               },
               "files": {
                 "O08": {
@@ -324,7 +440,39 @@
               "legacyId": "GW-1",
               "projectId": "project-2",
               "companyId": "206e9b34-afce-419a-b5d2-43adf57487d4",
-              "recordVersion": 1
+              "recordVersion": 1,
+              "drafting": {
+                "O02": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-PASSWORD": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-DBSAFER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-DBUSER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-NGS": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-SOFTMANAGER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                }
+              }
             },
             {
               "id": "95b9b8e5-34fe-5608-a1f8-0a732c168b64",
@@ -346,7 +494,12 @@
                 "O08": "done",
                 "O09": "done",
                 "O10": "review",
-                "O11": "review"
+                "O11": "review",
+                "P-PASSWORD": "done",
+                "P-DBSAFER": "done",
+                "P-DBUSER": "done",
+                "P-NGS": "done",
+                "P-SOFTMANAGER": "done"
               },
               "files": {
                 "O08": {
@@ -387,7 +540,39 @@
               "legacyId": "GW-2",
               "projectId": "project-2",
               "companyId": "206e9b34-afce-419a-b5d2-43adf57487d4",
-              "recordVersion": 1
+              "recordVersion": 1,
+              "drafting": {
+                "O02": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-PASSWORD": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-DBSAFER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-DBUSER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-NGS": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-SOFTMANAGER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                }
+              }
             },
             {
               "id": "87bf838a-988b-57cd-a805-021a4157557a",
@@ -407,7 +592,12 @@
                 "O05": "done",
                 "O06": "done",
                 "O10": "error",
-                "O11": "error"
+                "O11": "error",
+                "P-PASSWORD": "done",
+                "P-DBSAFER": "done",
+                "P-DBUSER": "done",
+                "P-NGS": "done",
+                "P-SOFTMANAGER": "done"
               },
               "files": {
                 "O10": {
@@ -433,7 +623,39 @@
               "legacyId": "GW-3",
               "projectId": "project-2",
               "companyId": "206e9b34-afce-419a-b5d2-43adf57487d4",
-              "recordVersion": 1
+              "recordVersion": 1,
+              "drafting": {
+                "O02": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-PASSWORD": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-DBSAFER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-DBUSER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-NGS": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-SOFTMANAGER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                }
+              }
             },
             {
               "id": "a84c63ff-d362-5836-a8f1-3e8e9ee31e49",
@@ -450,7 +672,12 @@
                 "O02": "done",
                 "O03": "done",
                 "O04": "done",
-                "O05": "progress"
+                "O05": "progress",
+                "P-PASSWORD": "done",
+                "P-DBSAFER": "done",
+                "P-DBUSER": "done",
+                "P-NGS": "done",
+                "P-SOFTMANAGER": "done"
               },
               "files": {},
               "certChecks": {},
@@ -461,7 +688,39 @@
               "legacyId": "GW-4",
               "projectId": "project-2",
               "companyId": "206e9b34-afce-419a-b5d2-43adf57487d4",
-              "recordVersion": 1
+              "recordVersion": 1,
+              "drafting": {
+                "O02": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-PASSWORD": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-DBSAFER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-DBUSER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-NGS": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-SOFTMANAGER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                }
+              }
             },
             {
               "id": "db531bbe-01aa-593a-aae2-2e3acab40690",
@@ -485,7 +744,12 @@
                 "O10": "done",
                 "O11": "done",
                 "O12": "done",
-                "O13": "done"
+                "O13": "done",
+                "P-PASSWORD": "done",
+                "P-DBSAFER": "done",
+                "P-DBUSER": "done",
+                "P-NGS": "done",
+                "P-SOFTMANAGER": "done"
               },
               "files": {
                 "O08": {
@@ -524,7 +788,39 @@
               "legacyId": "GW-5",
               "projectId": "project-2",
               "companyId": "206e9b34-afce-419a-b5d2-43adf57487d4",
-              "recordVersion": 1
+              "recordVersion": 1,
+              "drafting": {
+                "O02": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-PASSWORD": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-DBSAFER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-DBUSER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-NGS": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                },
+                "P-SOFTMANAGER": {
+                  "done": true,
+                  "recordedAt": "2026-11-09T00:00:00.000Z",
+                  "recordedBy": "PMO"
+                }
+              }
             },
             {
               "id": "554c84b6-c3f6-41e4-a9ed-180f1c457911",

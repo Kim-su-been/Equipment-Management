@@ -8,6 +8,7 @@ import {
   closeDemoSettings,
 } from "./demo-controls.mjs";
 import { summaryCounts } from "../src/work-summary.js";
+import { completionMetrics } from "../src/completion-metrics.js";
 const html = await readFile("preview/readyboard-offline.html");
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || "/usr/bin/chromium",
@@ -170,7 +171,7 @@ try {
     assert.ok(
       !(await page.locator(".admin-stage-board").innerText()).includes(p.id),
     );
-  await expect(page.locator(".admin-stage-column")).toHaveCount(5);
+  await expect(page.locator(".admin-stage-column")).toHaveCount(3);
   await expect(page.locator(".dashboard-work")).toContainText(
     "단계별 준비 인원",
   );
@@ -179,13 +180,16 @@ try {
     .allTextContents();
   assert.equal(new Set(visibleNames).size, initial.people.length);
   await page
-    .locator(".admin-stage-column.accounts .stage-person-profile")
+    .locator('.phase-person-step[data-phase-task="O02"] > summary')
+    .click();
+  await page
+    .locator('.phase-person-step[data-phase-task="O02"] .stage-person-profile')
     .first()
     .click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("dialog").getByLabel("닫기", { exact: true }).click();
   await page
-    .locator(".admin-stage-column.accounts .stage-person-action")
+    .locator('.phase-person-step[data-phase-task="O02"] .stage-person-action')
     .first()
     .click();
   await expect(page.getByRole("dialog")).toBeVisible();
@@ -195,7 +199,7 @@ try {
     ["gw", "그룹웨어"],
   ]) {
     await chooseDemoRole(page, role);
-    await expect(page.locator(".admin-stage-column")).toHaveCount(5);
+    await expect(page.locator(".admin-stage-column")).toHaveCount(3);
     const projects = await page
       .locator(".stage-person-profile > small")
       .allTextContents();
@@ -211,9 +215,23 @@ try {
   assert.equal(await page.getByLabel("검토 화면 역할").count(), 0);
   await expect(page.locator(".sidebar-ai")).toHaveCount(0);
   await expect(page.locator(".floating-ai")).toHaveCount(0);
-  await expect(page.locator(".work-stats")).toContainText(
-    "투입 임박·준비 미완료",
-  );
+  await expect(page.locator(".completion-card")).toHaveCount(4);
+  for (const metric of completionMetrics(initial.people, initial)) {
+    const card = page.getByRole("button", {
+      name: `${metric.title} · ${metric.percent}% · 완료 ${metric.completed}명 / 전체 ${metric.total}명`,
+      exact: true,
+    });
+    await expect(card).toBeVisible();
+    await card.click();
+    await expect(page.getByLabel("완료율 항목 필터")).toHaveValue(metric.id);
+    await expect(page.getByLabel("완료 여부 필터")).toHaveValue(
+      metric.remaining ? "incomplete" : "complete",
+    );
+    await expect(page.locator(".work-table tbody tr")).toHaveCount(
+      metric.remaining || metric.completed,
+    );
+    await nav("전체 현황");
+  }
   await page.screenshot({
     path: "artifacts/work-dashboard-after.png",
     fullPage: true,
@@ -353,10 +371,11 @@ try {
   ).toHaveCount(0);
   await expect(page.locator(".member-roadmap")).toBeVisible();
   await expect(page.locator(".roadmap-steps > li")).toHaveCount(5);
-  await expect(page.locator(".roadmap-stage-detail")).not.toHaveAttribute(
-    "open",
-    "",
-  );
+  await expect(page.locator(".roadmap-stage-detail")).toHaveCount(0);
+  const ownBox = await page.locator(".member-my-work-card").boundingBox(),
+    hostBox = await page.locator(".member-host-card").boundingBox();
+  assert.ok(Math.abs(ownBox.y - hostBox.y) < 2 && hostBox.x > ownBox.x);
+  assert.ok(ownBox.y < 1000, "personal work starts in first desktop viewport");
   await page.screenshot({
     path: "artifacts/member-roadmap-initial.png",
     fullPage: true,
@@ -370,9 +389,11 @@ try {
   await expect(page.locator(".roadmap-stage-detail")).toContainText(
     "본인 정보 등록",
   );
-  await page
-    .getByRole("button", { name: "현재 단계 보기", exact: true })
-    .click();
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("button", { name: "본인 등록 단계 보기", exact: true }),
+  ).toBeFocused();
+  await page.locator('.roadmap-steps [aria-current="step"]').click();
   await expect(page.locator(".roadmap-stage-detail")).toContainText(
     "보안서약서",
   );
@@ -401,15 +422,19 @@ try {
     path: "artifacts/member-roadmap-mobile.png",
     fullPage: true,
   });
+  await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page
-    .getByRole("button", { name: "현재 단계 보기", exact: true })
-    .click();
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: "artifacts/member-roadmap-desktop.png",
     fullPage: true,
   });
   await nav("서류");
+  await expect(page.locator(".member-subnav")).toContainText("교육");
+  await expect(page.locator(".member-subnav")).toContainText("서류");
+  await expect(page.locator(".member-task-tabs button.active")).toHaveText(
+    "서류",
+  );
   await page.locator(".document-tile").first().getByRole("button").click();
   await submitDocument("김민수");
   await chooseDemoRole(page, "pmo");
@@ -434,9 +459,12 @@ try {
   await expect(page.locator('[aria-current="step"]')).toContainText(
     "보완 필요",
   );
+  await expect(page.locator(".roadmap-stage-detail")).toHaveCount(0);
+  await page.locator('.roadmap-steps [aria-current="step"]').click();
   await expect(page.locator(".roadmap-stage-detail")).toContainText(
     "보완 요청",
   );
+  await page.keyboard.press("Escape");
   await page
     .getByRole("button", { name: "보안서약서 수정·재제출", exact: true })
     .click();

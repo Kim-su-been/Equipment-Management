@@ -16,6 +16,9 @@ import BrandCharacters from "./BrandCharacters.jsx";
 import MemberRoadmap from "./MemberRoadmap.jsx";
 import AdminStageBoard from "./AdminStageBoard.jsx";
 import ProcedureTaskBoard from "./ProcedureTaskBoard.jsx";
+import DraftCompletionControls from "./DraftCompletionControls.jsx";
+import { COMPLETION_METRICS, completionMetrics } from "./completion-metrics.js";
+import { DRAFT_TASK_IDS } from "./work-procedures.js";
 import { memberRoadmap } from "./member-roadmap.js";
 import { STATUS, PROJECTS } from "./data.js";
 import {
@@ -47,6 +50,9 @@ export function WorkBadge({ status, children, tone }) {
 }
 export function Preparation({ person, data }) {
   const s = personState(person, data);
+  const draftCount = DRAFT_TASK_IDS.filter(
+    (id) => person.drafting?.[id]?.done,
+  ).length;
   return (
     <div className="preparation-summary">
       <b>{s.pct}%</b>
@@ -55,6 +61,11 @@ export function Preparation({ person, data }) {
       >
         {s.preparation}
       </span>
+      {s.registered && draftCount < DRAFT_TASK_IDS.length && (
+        <span className="work-badge orange">
+          기안 완료 기록 {draftCount} / {DRAFT_TASK_IDS.length}종
+        </span>
+      )}
     </div>
   );
 }
@@ -76,6 +87,7 @@ export function WorkDashboard({
 }) {
   const today = businessDate(),
     count = summaryCounts(people, data, mailRequests, today),
+    completion = completionMetrics(people, data),
     projects = PROJECTS.filter(
       (project) => scope === "PMO" || scope === project,
     );
@@ -106,41 +118,64 @@ export function WorkDashboard({
         {canImport && btn("인력계획서 불러오기", onImport, true)}
       </header>
       <div className="work-stats">
-        {[
-          ["전체 인원", count.total, "명", () => onPeople({})],
-          [
-            "투입 임박·준비 미완료",
-            count.imminent,
-            "명",
-            () => onPeople({ preparation: "imminent" }),
-          ],
-          ["교육·서류 검토 대기", count.reviews, "건", onReviews],
-          ["메일 요청 검토 대기", count.mail, "건", onMail],
-        ].map(([label, value, unit, action]) => (
+        {completion.map((metric) => (
           <button
-            key={label}
-            className="work-stat"
-            onClick={action}
-            disabled={label === "메일 요청 검토 대기" && !canImport}
-            title={
-              label === "메일 요청 검토 대기" && !canImport
-                ? "메일 요청은 PMO에서 검토합니다."
-                : undefined
+            key={metric.id}
+            className="work-stat completion-card"
+            disabled={!metric.total}
+            title={metric.help}
+            aria-label={`${metric.title} · ${metric.percent ?? "대상 없음"}${metric.percent === null ? "" : "%"} · 완료 ${metric.completed}명 / 전체 ${metric.total}명`}
+            onClick={() =>
+              onPeople({
+                completionMetric: metric.id,
+                completionState: metric.remaining ? "incomplete" : "complete",
+              })
             }
           >
-            <span>{label}</span>
+            <span>{metric.title}</span>
             <strong>
-              {value}
-              <small>{unit}</small>
+              {metric.percent ?? "—"}
+              {metric.percent !== null && <small>%</small>}
             </strong>
+            <span className="completion-count">
+              완료 <b>{metric.completed}명</b> / 전체 {metric.total}명
+            </span>
+            <span className="completion-bar">
+              <i style={{ width: `${metric.percent || 0}%` }} />
+            </span>
             <span className="stat-foot">
-              {label.startsWith("투입 임박")
-                ? `${horizonDays(data.settings)}일 이내 투입 예정`
-                : "목록 보기"}{" "}
+              {metric.total
+                ? metric.remaining
+                  ? `미완료 ${metric.remaining}명 보기`
+                  : "완료 인원 보기"
+                : "대상 인원 없음"}
               <ArrowRight size={15} />
             </span>
           </button>
         ))}
+      </div>
+      <div className="dashboard-work-notices">
+        {btn(`전체 인원 ${count.total}명`, () => onPeople({}))}
+        {btn(`교육·서류 검토 대기 ${count.reviews}건`, onReviews)}
+        {canImport && btn(`메일 요청 검토 대기 ${count.mail}건`, onMail)}
+        {count.imminent > 0 &&
+          btn(`투입 임박·준비 미완료 ${count.imminent}명`, () =>
+            onPeople({ preparation: "imminent" }),
+          )}
+        <details className="completion-definitions">
+          <summary>완료율 집계 기준</summary>
+          <ul>
+            {COMPLETION_METRICS.map((metric) => (
+              <li key={metric.id}>
+                <b>{metric.title}</b> · {metric.help}
+              </li>
+            ))}
+          </ul>
+          <p>
+            조회 범위의 총인원이 공통 분모입니다. 기안은 6종 모두 완료 기록해야
+            하며, 엑셀 다운로드·계정 발급 상태와 별개로 집계합니다.
+          </p>
+        </details>
       </div>
       <section className="card work-card">
         <div className="work-card-heading">
@@ -247,6 +282,8 @@ const emptyFilters = {
   registration: "전체",
   preparation: "전체",
   lifecycle: "전체",
+  completionMetric: "전체",
+  completionState: "incomplete",
 };
 export function RosterPage({
   data,
@@ -366,6 +403,25 @@ export function RosterPage({
                 ["confirmed", "최종 준비 확인 완료"],
                 ["imminent", "투입 임박·준비 미완료"],
                 ["overdue", "예정일 경과·준비 미완료"],
+              ],
+            ],
+            [
+              "completionMetric",
+              "완료율 항목 필터",
+              [
+                ["전체", "전체 완료율 항목"],
+                ...COMPLETION_METRICS.map((metric) => [
+                  metric.id,
+                  metric.title,
+                ]),
+              ],
+            ],
+            [
+              "completionState",
+              "완료 여부 필터",
+              [
+                ["incomplete", "미완료 인원"],
+                ["complete", "완료 인원"],
               ],
             ],
             [
@@ -502,7 +558,11 @@ export function RosterPage({
                     </td>
                     <td onClick={(e) => e.stopPropagation()}>
                       <small>
-                        {next?.next?.task.title || next?.reason || "준비 완료"}
+                        {next?.next?.task.title ||
+                          next?.reason ||
+                          (DRAFT_TASK_IDS.some((id) => !p.drafting?.[id]?.done)
+                            ? "기안 완료 기록 확인 필요"
+                            : "준비 완료")}
                       </small>
                       {!s.registered && canInvite
                         ? btn("초대 링크 생성·복사", () => onInvite([p.id]))
@@ -536,6 +596,7 @@ export function TaskBoard({
   onAdd,
   onExport,
   scope,
+  onDraftRecord,
 }) {
   const [owner, setOwner] = useState(admin ? "all" : "mine"),
     [status, setStatus] = useState(admin ? "open" : "actionable"),
@@ -561,10 +622,13 @@ export function TaskBoard({
     completed = base.filter((r) => r.done),
     filtered = base.filter(
       (r) =>
-        !r.done &&
-        (status === "open" ||
-          (status === "actionable" && r.actionable) ||
-          r.status === status),
+        status === "all" ||
+        (status === "done"
+          ? r.done
+          : !r.done &&
+            (status === "open" ||
+              (status === "actionable" && r.actionable) ||
+              r.status === status)),
     );
   const renderRow = (r) => (
     <article
@@ -606,6 +670,13 @@ export function TaskBoard({
         )}
       </div>
       <WorkBadge status={r.status} />
+      {admin && (
+        <DraftCompletionControls
+          person={r.person}
+          taskId={r.task.id}
+          onRecord={onDraftRecord}
+        />
+      )}
       {r.registrationBlocked ? (
         <span>등록 대기</span>
       ) : (
@@ -673,6 +744,8 @@ export function TaskBoard({
               {[
                 ["actionable", "지금 처리할 작업"],
                 ["open", "미완료 전체"],
+                ["all", "완료 포함 전체"],
+                ["done", "완료 작업"],
                 ["ready", "실행 가능"],
                 ["waiting", "선행 작업 대기"],
                 ["review", "검토 대기"],
@@ -719,6 +792,7 @@ export function TaskBoard({
             onExport={onExport}
             onTask={onTask}
             actionFor={actionFor}
+            onDraftRecord={onDraftRecord}
           />
         ) : view === "list" ? (
           filtered.slice(0, limit).map(renderRow)
@@ -769,6 +843,7 @@ export function MemberDashboard({
   onTask,
   actionFor,
   onContinue,
+  onStage,
 }) {
   const s = personState(person, data),
     rows = taskRows([person], data),
@@ -795,150 +870,144 @@ export function MemberDashboard({
         )}
         <BrandCharacters focus="guide" className="work-mascot" />
       </header>
-      <MemberRoadmap
-        roadmap={roadmap}
-        onTask={(id) => onTask(person, id)}
-        onProfile={() => onPage("profile")}
-        onContinue={onContinue}
-      />
-      {s.overdue && (
-        <div className="work-alert">
-          예정일 경과 · 투입 여부를 담당자가 확인 중입니다.
-        </div>
-      )}
-      {fix.length > 0 && (
-        <section className="work-alert">
-          <b>보완 요청 {fix.length}건</b>
-          {fix.map((r) => (
-            <button
-              className="btn"
-              key={r.task.id}
-              onClick={() => onTask(person, r.task.id)}
-            >
-              {r.task.title} 수정·재제출
-            </button>
-          ))}
-        </section>
-      )}
-      <section className="card work-card">
-        <div className="work-card-heading">
-          <div>
-            <h2>
-              지금 내가 할 일 <span>{mine.length}건</span>
-            </h2>
-            <p>기한을 확인하고 바로 처리하세요.</p>
-          </div>
-          {btn("나의 작업 전체 보기", () => onPage("tasks"))}
-        </div>
-        {mine.map((r) => (
-          <article className="work-task-row" key={r.task.id}>
+      <MemberRoadmap roadmap={roadmap} onStage={onStage} />
+      <div className="member-home-columns">
+        <section className="card work-card member-my-work-card">
+          <div className="work-card-heading">
             <div>
-              <b>{r.task.title}</b>
-              <span>기한 {date(r.due)} · 수행사 본인</span>
-              {r.status === "fix" && (
-                <span className="work-error">
-                  {person.notes?.[r.task.id] ||
-                    "담당자 보완 요청을 확인해 주세요."}
-                </span>
-              )}
+              <h2>
+                지금 내가 할 일 <span>{mine.length}건</span>
+              </h2>
+              <p>기한을 확인하고 바로 처리하세요.</p>
             </div>
-            <WorkBadge status={r.status} />
-            {r.task.kind === "education" &&
-              btn("교육 시작", () => onPage("education"))}
-            {actionFor(person, r.task)}
-          </article>
-        ))}
-        {!mine.length && <p className="work-empty">{roadmap.note}</p>}
-        {roadmap.waiting.length > 0 && (
-          <details className="completed-work member-waiting-work">
-            <summary>대기·검토 중인 내 작업 {roadmap.waiting.length}건</summary>
-            {roadmap.waiting.map((r) => (
-              <article className="work-task-row" key={r.task.id}>
-                <div>
-                  <b>{r.task.title}</b>
-                  <span>
-                    기한 {date(r.due)} ·{" "}
-                    {r.status === "on_hold"
-                      ? "투입·작업 보류"
-                      : r.owner === "admin"
-                        ? "주관사에서 검토 중"
-                        : "선행 작업 대기"}
-                  </span>
-                  {r.blockedBy.length > 0 && r.status === "waiting" && (
-                    <div className="dependency-reason">
-                      대기 중인 이유:{" "}
-                      {r.blockedBy.map((id) => (
-                        <button
-                          className="text-link"
-                          key={id}
-                          onClick={() => onTask(person, id)}
-                        >
-                          {rows.find((row) => row.task.id === id)?.task.title ||
-                            "선행 작업"}{" "}
-                          확인
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <WorkBadge status={r.status} />
-                {btn("상세 보기", () => onTask(person, r.task.id))}
-              </article>
-            ))}
-          </details>
-        )}
-        {roadmap.completed.length > 0 && (
-          <details className="completed-work member-completed-work">
-            <summary>완료한 내 작업 {roadmap.completed.length}건</summary>
-            {roadmap.completed.map((r) => (
-              <article className="work-task-row" key={r.task.id}>
-                <div>
-                  <b>{r.task.title}</b>
-                  <span>본인 작업 완료</span>
-                </div>
-                <WorkBadge status="done" />
-                {btn("상세 보기", () => onTask(person, r.task.id))}
-              </article>
-            ))}
-          </details>
-        )}
-      </section>
-      <div className="member-overview-links">
-        {["education", "documents"].map((page, i) => (
-          <button className="card" key={page} onClick={() => onPage(page)}>
-            <b>{i ? "제출 서류" : "필수 교육"}</b>
-            <span>
-              {
-                rows.filter(
-                  (r) =>
-                    r.task.kind === (i ? "document" : "education") && r.done,
-                ).length
-              }{" "}
-              /{" "}
-              {
-                rows.filter(
-                  (r) => r.task.kind === (i ? "document" : "education"),
-                ).length
-              }{" "}
-              완료
-            </span>
-            <ArrowRight size={16} />
-          </button>
-        ))}
-      </div>
-      <section className="card work-card">
-        <h2>
-          주관사에서 준비 중인 항목 <span>{host.length}건</span>
-        </h2>
-        <p>본인 작업과 별도로 담당자가 처리합니다.</p>
-        {host.slice(0, 5).map((r) => (
-          <div className="host-summary-row" key={r.task.id}>
-            <span>{r.task.title}</span>
-            <small>{r.contact}</small>
-            <WorkBadge status={r.status} />
+            {btn("나의 작업 전체 보기", () => onPage("tasks"))}
           </div>
-        ))}
-      </section>
+          {fix.length > 0 && (
+            <section className="work-alert">
+              <b>보완 요청 {fix.length}건</b>
+              {fix.map((r) => (
+                <button
+                  className="btn"
+                  key={r.task.id}
+                  onClick={() => onTask(person, r.task.id)}
+                >
+                  {r.task.title} 수정·재제출
+                </button>
+              ))}
+            </section>
+          )}
+          {mine.map((r) => (
+            <article className="work-task-row" key={r.task.id}>
+              <div>
+                <b>{r.task.title}</b>
+                <span>기한 {date(r.due)} · 수행사 본인</span>
+                {r.status === "fix" && (
+                  <span className="work-error">
+                    {person.notes?.[r.task.id] ||
+                      "담당자 보완 요청을 확인해 주세요."}
+                  </span>
+                )}
+              </div>
+              <WorkBadge status={r.status} />
+              {r.task.kind === "education" &&
+                btn("교육 시작", () => onPage("education"))}
+              {actionFor(person, r.task)}
+            </article>
+          ))}
+          {!mine.length && <p className="work-empty">{roadmap.note}</p>}
+          {roadmap.waiting.length > 0 && (
+            <details className="completed-work member-waiting-work">
+              <summary>
+                대기·검토 중인 내 작업 {roadmap.waiting.length}건
+              </summary>
+              {roadmap.waiting.map((r) => (
+                <article className="work-task-row" key={r.task.id}>
+                  <div>
+                    <b>{r.task.title}</b>
+                    <span>
+                      기한 {date(r.due)} ·{" "}
+                      {r.status === "on_hold"
+                        ? "투입·작업 보류"
+                        : r.owner === "admin"
+                          ? "주관사에서 검토 중"
+                          : "선행 작업 대기"}
+                    </span>
+                    {r.blockedBy.length > 0 && r.status === "waiting" && (
+                      <div className="dependency-reason">
+                        대기 중인 이유:{" "}
+                        {r.blockedBy.map((id) => (
+                          <button
+                            className="text-link"
+                            key={id}
+                            onClick={() => onTask(person, id)}
+                          >
+                            {rows.find((row) => row.task.id === id)?.task
+                              .title || "선행 작업"}{" "}
+                            확인
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <WorkBadge status={r.status} />
+                  {btn("상세 보기", () => onTask(person, r.task.id))}
+                </article>
+              ))}
+            </details>
+          )}
+          {roadmap.completed.length > 0 && (
+            <details className="completed-work member-completed-work">
+              <summary>완료한 내 작업 {roadmap.completed.length}건</summary>
+              {roadmap.completed.map((r) => (
+                <article className="work-task-row" key={r.task.id}>
+                  <div>
+                    <b>{r.task.title}</b>
+                    <span>본인 작업 완료</span>
+                  </div>
+                  <WorkBadge status="done" />
+                  {btn("상세 보기", () => onTask(person, r.task.id))}
+                </article>
+              ))}
+            </details>
+          )}
+        </section>
+        <section className="card work-card member-host-card">
+          <h2>
+            주관사에서 준비 중인 항목 <span>{host.length}건</span>
+          </h2>
+          <p>본인 작업과 별도로 담당자가 처리합니다.</p>
+          {s.overdue && (
+            <div className="work-alert">
+              예정일 경과 · 투입 여부를 담당자가 확인 중입니다.
+            </div>
+          )}
+
+          {host.slice(0, 5).map((r) => (
+            <div className="host-summary-row" key={r.task.id}>
+              <span>{r.task.title}</span>
+              <small>{r.contact}</small>
+              <WorkBadge status={r.status} />
+            </div>
+          ))}
+          {host.length > 5 && (
+            <details className="completed-work">
+              <summary>나머지 주관사 준비 항목 {host.length - 5}건</summary>
+              {host.slice(5).map((r) => (
+                <div className="host-summary-row" key={r.task.id}>
+                  <button
+                    className="text-link"
+                    onClick={() => onTask(person, r.task.id)}
+                  >
+                    {r.task.title}
+                  </button>
+                  <small>{r.contact}</small>
+                  <WorkBadge status={r.status} />
+                </div>
+              ))}
+            </details>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

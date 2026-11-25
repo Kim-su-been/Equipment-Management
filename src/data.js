@@ -1,4 +1,4 @@
-import { PROCEDURE_TASKS } from "./work-procedures.js";
+import { PROCEDURE_TASKS, DRAFT_TASK_IDS } from "./work-procedures.js";
 export const TODAY = "2026-11-09";
 export const PROJECTS = ["SFA", "그룹웨어"];
 export const TASKS = [
@@ -272,6 +272,18 @@ export function seed() {
       p.tasks = { ...range(1, 7), O10: "error", O11: "error" };
     if (p.id === "GW-4") p.tasks = { ...range(1, 4), O05: "progress" };
     if (p.id === "GW-5") p.tasks = range(1, 15);
+    // Initial demo examples explicitly include the six required accounts.
+    if (p.tasks.O03 === "done") {
+      for (const id of DRAFT_TASK_IDS) {
+        p.tasks[id] = "done";
+        p.drafting ||= {};
+        p.drafting[id] = {
+          done: true,
+          recordedAt: "2026-11-09T00:00:00.000Z",
+          recordedBy: "PMO",
+        };
+      }
+    }
     ["O08", "O09", "O10", "O11"].forEach((id) => {
       if (p.tasks[id])
         p.files[id] = {

@@ -1,11 +1,22 @@
 import React, { useState } from "react";
+import DraftCompletionControls from "./DraftCompletionControls.jsx";
+import { DRAFT_TASK_IDS } from "./work-procedures.js";
 import { Download } from "lucide-react";
 import { PROCEDURE_PHASES, PROCEDURE_STEPS } from "./work-procedures.js";
 import { batchEligibility } from "./batch-tasks.js";
 import { TASKS, STATUS } from "./data.js";
 
 const date = (s) => (s ? s.replaceAll("-", ".") : "미정");
-function TaskGroup({ step, rows, data, scope, onExport, onTask, actionFor }) {
+function TaskGroup({
+  step,
+  rows,
+  data,
+  scope,
+  onExport,
+  onTask,
+  actionFor,
+  onDraftRecord,
+}) {
   const [selected, setSelected] = useState([]);
   const task = rows[0]?.task || TASKS.find((t) => t.id === step.taskId);
   const exportable = task?.owner === "admin" && !task?.derived;
@@ -72,6 +83,22 @@ function TaskGroup({ step, rows, data, scope, onExport, onTask, actionFor }) {
             <Download size={15} />
             선택 인원 기안 첨부 엑셀
           </button>
+          {DRAFT_TASK_IDS.includes(step.taskId) && (
+            <button
+              type="button"
+              className="btn"
+              disabled={!ids.length}
+              onClick={() =>
+                onDraftRecord({
+                  taskId: step.taskId,
+                  personIds: ids,
+                  done: true,
+                })
+              }
+            >
+              선택 인원 기안 작성 완료 기록
+            </button>
+          )}
         </div>
       )}
       {exportable && (
@@ -131,6 +158,11 @@ function TaskGroup({ step, rows, data, scope, onExport, onTask, actionFor }) {
               <span className={`work-badge ${tone}`}>{label}</span>
               <div className="procedure-person-actions">
                 {actionFor(r.person, r.task)}
+                <DraftCompletionControls
+                  person={r.person}
+                  taskId={r.task.id}
+                  onRecord={onDraftRecord}
+                />
                 <button
                   className="text-link"
                   onClick={() => onTask(r.person, r.task.id)}
@@ -158,12 +190,13 @@ export default function ProcedureTaskBoard({
   onExport,
   onTask,
   actionFor,
+  onDraftRecord,
 }) {
   const known = new Set(PROCEDURE_STEPS.map((s) => s.taskId));
   const extras = [
     ...new Set(rows.filter((r) => !known.has(r.task.id)).map((r) => r.task.id)),
   ];
-  const props = { data, scope, onExport, onTask, actionFor };
+  const props = { data, scope, onExport, onTask, actionFor, onDraftRecord };
   return (
     <div className="procedure-workspace">
       <p className="procedure-overview">

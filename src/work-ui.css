@@ -2019,6 +2019,240 @@ body {
   border-radius: 6px;
   font-size: 13px;
 }
+.completion-card .completion-count {
+  color: #365772;
+  font-size: 13px;
+}
+.completion-card .completion-count b {
+  color: #174c72;
+}
+.completion-bar {
+  height: 5px;
+  width: 100%;
+  border-radius: 5px;
+  background: #dceaf4;
+  overflow: hidden;
+}
+.completion-bar i {
+  display: block;
+  height: 100%;
+  background: #0067ac;
+}
+.dashboard-work-notices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.dashboard-work-notices .btn {
+  font-size: 12px;
+}
+.completion-definitions {
+  color: #3b607b;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.completion-definitions summary {
+  cursor: pointer;
+}
+.completion-definitions[open] {
+  flex-basis: 100%;
+  padding: 14px;
+  border: 1px solid #cddfea;
+  border-radius: 8px;
+  background: #f5faff;
+}
+.member-home-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.member-home-columns > .work-card {
+  min-width: 0;
+}
+.member-home-columns .work-task-row {
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.member-home-columns .work-task-row > div:first-child {
+  flex-basis: 100%;
+}
+.member-home-columns .work-alert {
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+.member-host-card > p {
+  color: #4d677e;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.member-host-card .host-summary-row {
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.member-host-card .host-summary-row > span:first-child,
+.member-host-card .host-summary-row > .text-link {
+  flex-basis: 100%;
+  text-align: left;
+  font-size: 14px;
+  color: #244e6c;
+}
+.member-host-card .host-summary-row > .work-badge {
+  margin-left: auto;
+}
+.member-roadmap {
+  min-width: 0;
+}
+.member-roadmap .roadmap-steps {
+  margin-bottom: 0;
+}
+.roadmap-popup-detail > p {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #3f607b;
+}
+.app-shell .sidebar .member-subnav {
+  margin: 0 10px 6px 23px;
+  padding-left: 12px;
+  border-left: 1px solid #6b9fc0;
+}
+.app-shell .sidebar .member-subnav .nav-item {
+  padding: 8px 10px;
+  min-height: 35px;
+  font-size: 13px;
+}
+.app-shell .sidebar .member-subnav .nav-item.active {
+  background: #1973a4;
+  border-color: #83b7d7;
+  color: #fff;
+}
+.member-task-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 18px;
+  border-bottom: 1px solid #cddfeb;
+}
+.member-task-tabs button {
+  border: 0;
+  border-bottom: 3px solid transparent;
+  padding: 10px 18px;
+  background: transparent;
+  color: #43627b;
+  font: inherit;
+  cursor: pointer;
+}
+.member-task-tabs button.active {
+  color: #0067ac;
+  border-bottom-color: #0067ac;
+  font-weight: 700;
+}
+.procedure-stage-board {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.procedure-stage-board .admin-stage-heading {
+  min-height: 140px;
+}
+.phase-exit-note {
+  display: block;
+  color: #4c6880;
+  font-size: 11px;
+  margin-top: 5px;
+}
+.phase-person-step {
+  border-top: 1px solid #d5e3ee;
+}
+.phase-person-step > summary {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 1px;
+  font-size: 13px;
+  color: #285471;
+  cursor: pointer;
+}
+.phase-person-step > summary > span {
+  flex: 1;
+}
+.phase-person-step > summary > b {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.phase-person-step > summary::before {
+  content: "›";
+  color: #0067ac;
+}
+.phase-person-step[open] > summary::before {
+  transform: rotate(90deg);
+}
+.phase-person-step .admin-stage-people {
+  max-height: 300px;
+  padding-bottom: 8px;
+}
+.draft-record-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  max-width: 280px;
+  padding: 6px 0;
+}
+.draft-record-controls .text-link {
+  font-size: 12px;
+  white-space: normal;
+  text-align: left;
+}
+.procedure-person-actions .draft-record-controls {
+  flex-basis: 100%;
+  justify-content: flex-end;
+}
+.task-board .work-task-row:has(.draft-record-controls) {
+  flex-wrap: wrap;
+}
+@media (max-width: 1050px) {
+  .member-home-columns {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 750px) {
+  .procedure-stage-board {
+    grid-template-columns: 1fr;
+  }
+  .procedure-stage-board .admin-stage-heading {
+    min-height: 0;
+    padding-bottom: 13px;
+  }
+  .member-roadmap .roadmap-steps {
+    grid-template-columns: repeat(5, minmax(112px, 1fr));
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 3px;
+    gap: 10px;
+    scroll-snap-type: x proximity;
+  }
+  .member-roadmap .roadmap-steps > li {
+    scroll-snap-align: start;
+  }
+  .member-roadmap .roadmap-steps button {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    min-height: 132px;
+  }
+  .member-roadmap .roadmap-step-top {
+    grid-row: auto;
+    justify-content: space-between;
+  }
+  .member-roadmap .roadmap-steps > li:not(:last-child)::after {
+    top: 29px;
+    right: -10px;
+    left: auto;
+    bottom: auto;
+    width: 10px;
+    height: 2px;
+  }
+}
 @media (max-width: 750px) {
   .procedure-person {
     grid-template-columns: 20px minmax(0, 1fr);

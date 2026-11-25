@@ -6,6 +6,7 @@ import {
   isPrepared,
   progress,
   canManage,
+  requiredTasks,
 } from "../src/data.js";
 test("initial ten people and preparation match the scenario", () => {
   const d = seed();
@@ -84,7 +85,13 @@ test("project tasks follow dependencies, readiness and future project membership
   assert.equal(taskStatus(person, task.id, d.seats, tasks), "ready");
   assert.equal(isPrepared(person, d.seats, tasks), false);
   assert.equal(taskStatus(person, "O16", d.seats, tasks), "waiting");
-  assert.equal(progress(person, d.seats, tasks), 91);
+  assert.equal(
+    progress(person, d.seats, tasks),
+    Math.round(
+      (requiredTasks(person).length / requiredTasks(person, tasks).length) *
+        100,
+    ),
+  );
   assert.equal(
     taskStatus(
       d.people.find((p) => p.id === "SFA-5"),

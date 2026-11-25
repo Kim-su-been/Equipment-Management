@@ -8,6 +8,7 @@ import {
 import { reschedulePreparation } from "./personnel-workflow.js";
 import { createProjectTask } from "./project-tasks.js";
 import { inScope } from "./actor-scope.js";
+import { validDrafting } from "./drafting.js";
 const immutable = new Set([
   "id",
   "project",
@@ -271,6 +272,18 @@ export function applyStatePatch(store, actor, ops) {
 
   for (const person of next.people) {
     const previous = original.people.find((p) => p.id === person.id);
+    if (
+      ops.some(
+        (op) =>
+          op.path[0] === "people" &&
+          op.path[1] === person.id &&
+          op.path[2] === "drafting",
+      ) &&
+      !validDrafting(person.drafting || {})
+    )
+      throw Object.assign(new Error("기안 작성 기록 형식을 확인해 주세요."), {
+        status: 400,
+      });
     if (previous?.start !== person.start)
       reschedulePreparation(next, person, previous?.start, person.start);
   }
