@@ -235,6 +235,11 @@ try {
       .getByText("SFA-1", { exact: true }),
   ).toHaveCount(1);
   await nav("준비 작업");
+  await expect(page.getByLabel("작업 보기 방식")).toHaveValue("procedure");
+  await expect(page.locator(".procedure-phase")).toHaveCount(3);
+  await page.getByLabel("작업 보기 방식").selectOption("list");
+  await page.getByRole("button", { name: "내 작업", exact: true }).click();
+  await page.getByLabel("작업 상태 필터").selectOption("actionable");
   await expect(
     page.getByRole("button", { name: "내 작업", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");

@@ -112,7 +112,7 @@ export function memberRoadmap(person, data) {
   );
   let current;
   if (!state.registered) current = stages[0];
-  else if (final) current = stages[4];
+  else if (final || ready) current = stages[4];
   else if (fixes.length) current = stages[2];
   else if (mine.length && !person.onboardingHold?.active)
     current =
@@ -128,13 +128,15 @@ export function memberRoadmap(person, data) {
       ? "개인 초대 링크에서 본인 등록을 마치면 준비 작업을 시작할 수 있어요."
       : final
         ? "최종 준비 확인이 끝났어요. 실제 투입 일정과 안내를 확인해 주세요."
-        : fixes.length
-          ? `보완 요청 ${fixes.length}건을 수정한 뒤 다시 제출해 주세요.`
-          : mine.length
-            ? `지금 처리할 수 있는 내 작업이 ${mine.length}건 있어요. 아래 목록에서 바로 시작하세요.`
-            : reviewing.length
-              ? `제출물 ${reviewing.length}건을 주관사에서 확인하고 있어요. 검토 결과를 기다려 주세요.`
-              : "주관사 준비 또는 선행 작업을 기다리고 있어요. 단계별 작업에서 대기 이유를 확인하세요.";
+        : ready
+          ? "필수 준비가 충족되었습니다. 주관사의 최종 준비 확인을 기다려 주세요."
+          : fixes.length
+            ? `보완 요청 ${fixes.length}건을 수정한 뒤 다시 제출해 주세요.`
+            : mine.length
+              ? `지금 처리할 수 있는 내 작업이 ${mine.length}건 있어요. 아래 목록에서 바로 시작하세요.`
+              : reviewing.length
+                ? `제출물 ${reviewing.length}건을 주관사에서 확인하고 있어요. 검토 결과를 기다려 주세요.`
+                : "주관사 준비 또는 선행 작업을 기다리고 있어요. 단계별 작업에서 대기 이유를 확인하세요.";
   return {
     stages,
     current,

@@ -1,3 +1,4 @@
+import { PROCEDURE_TASKS } from "./work-procedures.js";
 export const TODAY = "2026-11-09";
 export const PROJECTS = ["SFA", "그룹웨어"];
 export const TASKS = [
@@ -73,7 +74,7 @@ export const TASKS = [
     title: "보안서약서",
     owner: "member",
     group: "서류",
-    deps: ["O01"],
+    deps: ["O01", "O08"],
     desc: "내용을 읽고 필수 항목을 작성한 후 본인 서명이 포함된 문서를 제출해 주세요.",
     kind: "document",
   },
@@ -112,6 +113,7 @@ export const TASKS = [
     deps: ["O03", "O05", "O06", "O08", "O09", "O12", "O13"],
     desc: "필수 준비가 완료되면 투입일을 확인하고 투입을 확정합니다.",
   },
+  ...PROCEDURE_TASKS,
 ];
 export const STATUS = {
   done: ["완료", "green"],
@@ -160,6 +162,12 @@ export function taskStatus(person, id, seats = {}, customTasks = []) {
   if (person.registrationStatus === "pending_registration" && id !== "O01")
     return "waiting";
   if (
+    task.procedurePhase === "exit" &&
+    !["투입 중", "철수 예정", "철수"].includes(person.lifecycle) &&
+    person.tasks[id] !== "done"
+  )
+    return "waiting";
+  if (
     person.onboardingHold?.active &&
     id !== "O01" &&
     (id === "O16" || (person.tasks[id] !== "done" && !task.derived))
@@ -168,6 +176,12 @@ export function taskStatus(person, id, seats = {}, customTasks = []) {
   if (person.tasks[id] !== "done" && task.cancelled) return "cancelled";
   if (person.tasks[id] !== "done" && task.onHold) return "on_hold";
   const statusOf = (id) => taskStatus(person, id, seats, customTasks);
+  if (
+    id === "O10" &&
+    !["done", "review", "ai", "fix", "error"].includes(person.tasks[id]) &&
+    statusOf("O08") !== "done"
+  )
+    return "waiting";
   if (id === "O12")
     return ["O10", "O11"].every((d) =>
       ["done", "cancelled"].includes(statusOf(d)),

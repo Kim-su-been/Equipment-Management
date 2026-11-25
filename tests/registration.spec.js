@@ -120,6 +120,32 @@ test("A import → invitation in independent browser → same record registered 
   const after = await (await page.request.get("/api/state")).json();
   expect(after.state.people.find((p) => p.name === "김하늘").id).toBe(id);
   expect(after.state.people).toHaveLength(2);
+  // Security education is completed before the pledge is signed.
+  await member
+    .locator(".sidebar")
+    .getByRole("button", { name: "교육", exact: true })
+    .click();
+  await member
+    .locator(".education-card")
+    .first()
+    .getByRole("button", { name: "수료증 등록", exact: true })
+    .click();
+  await member
+    .getByRole("dialog")
+    .locator("input[type=file]")
+    .setInputFiles({
+      name: "certificate.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-1.4 browser certificate"),
+    });
+  await expect(member.getByRole("dialog")).toContainText("완료");
+  await member.getByRole("dialog").getByLabel("닫기", { exact: true }).click();
+  await expect
+    .poll(async () => {
+      const education = await (await page.request.get("/api/state")).json();
+      return education.state.people.find((p) => p.id === id).tasks.O08;
+    })
+    .toBe("done");
   // Existing document UI and approval now use the shared server DB.
   await member
     .locator(".sidebar")
@@ -173,31 +199,6 @@ test("A import → invitation in independent browser → same record registered 
     })
     .toBe("done");
 
-  await member
-    .locator(".sidebar")
-    .getByRole("button", { name: "교육", exact: true })
-    .click();
-  await member
-    .locator(".education-card")
-    .first()
-    .getByRole("button", { name: "수료증 등록", exact: true })
-    .click();
-  await member
-    .getByRole("dialog")
-    .locator("input[type=file]")
-    .setInputFiles({
-      name: "certificate.pdf",
-      mimeType: "application/pdf",
-      buffer: Buffer.from("%PDF-1.4 browser certificate"),
-    });
-  await expect(member.getByRole("dialog")).toContainText("완료");
-  await member.getByRole("dialog").getByLabel("닫기", { exact: true }).click();
-  await expect
-    .poll(async () => {
-      const education = await (await page.request.get("/api/state")).json();
-      return education.state.people.find((p) => p.id === id).tasks.O08;
-    })
-    .toBe("done");
   // Reopening consumed link in a third browser is rejected.
   const other = await browser.newContext(),
     otherPage = await other.newPage();

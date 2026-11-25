@@ -987,11 +987,17 @@ export default function App({ initialState, actor, onLogout }) {
         data={data}
         people={scoped}
         admin={admin}
+        scope={scope}
         onTask={openWorkTask}
         onInvite={invitePeople}
         actionFor={actionFor}
         onAdd={() => setModal({ type: "addTask" })}
-        onExport={() => setModal({ type: "taskExport" })}
+        onExport={(selection) =>
+          setModal({
+            type: "taskExport",
+            selection: selection?.taskId ? selection : undefined,
+          })
+        }
       />
     );
   }
@@ -2096,6 +2102,7 @@ export default function App({ initialState, actor, onLogout }) {
           Modal={Modal}
           data={data}
           scope={scope}
+          initialSelection={modal.selection}
           onClose={close}
           onExport={async (selection) => {
             const result = await exportTaskWorkbook(data, scope, selection);

@@ -130,11 +130,12 @@ test("PMO can assign optional global and individual tasks without changing readi
     target: "selected",
     personIds: [person.id],
   });
-  assert.equal(tasksForPerson(person, [individual]).length, 14);
-  assert.equal(tasksForPerson(d.people[1], [individual]).length, 13);
+  const templateCount = tasksForPerson(person).length;
+  assert.equal(tasksForPerson(person, [individual]).length, templateCount + 1);
+  assert.equal(tasksForPerson(d.people[1], [individual]).length, templateCount);
   assert.equal(
     tasksForPerson({ id: "SFA-6", project: "SFA" }, [individual]).length,
-    13,
+    templateCount,
   );
 });
 
@@ -182,6 +183,8 @@ test("self registration assigns identity, education, documents and host work wit
   assert.equal(person.phone, "01012345678");
   assert.equal(taskStatus(person, "O08", d.seats), "ready");
   assert.equal(taskStatus(person, "O09", d.seats), "ready");
+  assert.equal(taskStatus(person, "O10", d.seats), "waiting");
+  person.tasks.O08 = "done";
   assert.equal(taskStatus(person, "O10", d.seats), "ready");
   assert.equal(taskStatus(person, "O02", d.seats), "ready");
   assert.equal(taskStatus(person, "O06", d.seats), "waiting");

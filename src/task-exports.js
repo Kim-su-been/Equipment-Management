@@ -1,5 +1,7 @@
-import { TASKS } from "./data.js";
+import { TASKS, tasksForPerson } from "./data.js";
 import { authorizedPeople } from "./onboarding.js";
+import { batchEligibility } from "./batch-tasks.js";
+import { PROCEDURE_TASKS } from "./work-procedures.js";
 export const TASK_EXPORTS = {
   O02: {
     title: "eGIS 계정 신청",
@@ -38,6 +40,82 @@ export const TASK_EXPORTS = {
     ],
   },
 };
+const baseColumns = [
+  ["성명", "name"],
+  ["소속회사", "company"],
+  ["프로젝트", "project"],
+  ["연락처", "phone"],
+  ["사용 시작 예정일", "start"],
+  ["사용 종료 예정일", "end"],
+];
+const specificColumns = {
+  "P-PASSWORD": [
+    ["대상 시스템", "targetSystem"],
+    ["신청 권한", "permission"],
+    ["신청 사유", "requestReason"],
+  ],
+  "P-DBSAFER": [
+    ["접속 대상 시스템", "targetSystem"],
+    ["접속 IP", "sourceIp"],
+    ["신청 권한", "permission"],
+  ],
+  "P-DBUSER": [
+    ["DB명", "database"],
+    ["스키마", "schema"],
+    ["신청 권한", "permission"],
+    ["신청 사유", "requestReason"],
+  ],
+  "P-NGS": [
+    ["대상 시스템", "targetSystem"],
+    ["신청 권한", "permission"],
+    ["신청 사유", "requestReason"],
+  ],
+  "P-SOFTMANAGER": [
+    ["관리 대상 장비", "targetDevice"],
+    ["신청 사유", "requestReason"],
+  ],
+};
+for (const task of PROCEDURE_TASKS) {
+  TASK_EXPORTS[task.id] =
+    task.procedurePhase === "exit"
+      ? {
+          title: task.title,
+          sheet: "징구 현황",
+          columns: [
+            ["성명", "name"],
+            ["소속회사", "company"],
+            ["프로젝트", "project"],
+            ["연락처", "phone"],
+            ["철수 예정일", "end"],
+            ["징구 여부", "$collectionStatus"],
+            ["징구일", "$collectionDate"],
+            ["확인 담당자", "$reviewer"],
+          ],
+          extraFields: [
+            ["징구일", "collectionDate"],
+            ["확인 담당자", "reviewer"],
+          ],
+        }
+      : {
+          title: task.title,
+          columns: [
+            ...baseColumns,
+            ...specificColumns[task.id].map(([label, key]) => [
+              label,
+              `$${key}`,
+            ]),
+          ],
+          extraFields: specificColumns[task.id],
+        };
+}
+export function taskExportTemplate(task) {
+  return (
+    TASK_EXPORTS[task.id] || {
+      title: task.title,
+      columns: TASK_EXPORTS.O02.columns,
+    }
+  );
+}
 export function taskExportRows(data, scope, selection) {
   const people = authorizedPeople(
     data,
@@ -50,10 +128,32 @@ export function taskExportRows(data, scope, selection) {
   );
   if (!task || task.owner !== "admin")
     throw new Error("주관사 작업의 양식을 선택해 주세요.");
-  const template = TASK_EXPORTS[task.id] || {
-    title: task.title,
-    columns: TASK_EXPORTS.O02.columns,
-  };
+  const template = taskExportTemplate(task);
+  const allowedFields = new Set(
+    (template.extraFields || []).map(([, key]) => key),
+  );
+  const commonFields = Object.fromEntries(
+    Object.entries(selection.commonFields || {}).map(([key, value]) => {
+      if (
+        !allowedFields.has(key) ||
+        typeof value !== "string" ||
+        value.length > 300
+      )
+        throw new Error("양식 추가 입력 정보를 확인해 주세요.");
+      return [key, value.trim()];
+    }),
+  );
+  if (selection.pendingOnly) {
+    for (const person of people) {
+      const assigned = tasksForPerson(person, data.customTasks || []).find(
+        (t) => t.id === task.id,
+      );
+      const reason = !assigned
+        ? "배정되지 않은 작업입니다."
+        : batchEligibility(person, assigned, data.customTasks || []);
+      if (reason) throw new Error(`${person.name}: ${reason}`);
+    }
+  }
   if (
     task.custom &&
     people.some(
@@ -68,7 +168,16 @@ export function taskExportRows(data, scope, selection) {
     template,
     rows: people.map((p) =>
       Object.fromEntries(
-        template.columns.map(([label, key]) => [label, p[key] || "미입력"]),
+        template.columns.map(([label, key]) => [
+          label,
+          key === "$collectionStatus"
+            ? p.tasks[task.id] === "done"
+              ? "완료"
+              : "미완료"
+            : key.startsWith("$")
+              ? commonFields[key.slice(1)] || "미입력"
+              : p[key] || "미입력",
+        ]),
       ),
     ),
   };
@@ -77,13 +186,22 @@ export async function exportTaskWorkbook(data, scope, selection) {
   const { task, template, rows } = taskExportRows(data, scope, selection);
   const { default: ExcelJS } = await import("exceljs");
   const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet("신청 정보");
+  const sheet = workbook.addWorksheet(template.sheet || "신청 정보");
   sheet.columns = template.columns.map(([label]) => ({
     header: label,
     key: label,
     width: label.includes("메일") ? 32 : 22,
   }));
   rows.forEach((row) => sheet.addRow(row));
+  for (let n = 2; n <= sheet.rowCount; n++)
+    sheet.getRow(n).eachCell((cell) => {
+      if (cell.value === "미입력")
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFFFF1D7" },
+        };
+    });
   sheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
   sheet.getRow(1).fill = {
     type: "pattern",
@@ -102,6 +220,10 @@ export async function exportTaskWorkbook(data, scope, selection) {
       "사내 공식 양식이 아닌 예시입니다. 실제 양식을 확보한 뒤 필드 매핑을 교체하세요.",
     ],
     ["미입력 처리", "미입력으로 표시된 항목을 신청 전에 확인하세요."],
+    [
+      "업무 처리",
+      "파일 생성은 기안 상신·계정 발급·서류 징구 완료 처리가 아닙니다. 처리 결과를 확인한 후 서비스에 기록하세요.",
+    ],
     [
       "기준 기간",
       "등록된 투입 예정 기간입니다. 실제 투입일 또는 MM 실적을 의미하지 않습니다.",

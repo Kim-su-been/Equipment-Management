@@ -1787,6 +1787,260 @@ body {
 .app-shell .stage-person-action:focus-visible {
   outline-offset: -3px;
 }
+
+/* Batch work and drafting attachments reuse the existing task actions. */
+.procedure-overview {
+  padding: 12px;
+  color: #285674;
+  background: #f0f8ff;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.procedure-phase {
+  margin-top: 20px;
+  border: 1px solid #cfdfec;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.procedure-phase > header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #eef6fc;
+}
+.procedure-phase > header > span {
+  display: grid;
+  place-items: center;
+  width: 35px;
+  height: 35px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #0067ac;
+  color: #fff;
+  font-weight: 700;
+}
+.procedure-phase > header h2 {
+  margin: 0 0 5px;
+}
+.procedure-phase > header p {
+  color: #425f76;
+  font-size: 13px;
+  margin: 0;
+}
+.procedure-task-group {
+  border-top: 1px solid #dce7f0;
+}
+.procedure-task-group > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  background: #fff;
+  color: #244963;
+}
+.procedure-task-group > summary::-webkit-details-marker {
+  display: none;
+}
+.procedure-task-group > summary::before {
+  content: "›";
+  color: #0067ac;
+  font-size: 24px;
+  line-height: 1;
+}
+.procedure-task-group[open] > summary::before {
+  transform: rotate(90deg);
+}
+.procedure-task-group[open] > summary {
+  background: #f5faff;
+}
+.procedure-task-group summary > span:first-of-type {
+  flex: 1;
+}
+.procedure-task-group summary b {
+  font-size: 15px;
+}
+.procedure-task-group summary small {
+  display: block;
+  margin-top: 5px;
+  font-size: 12px;
+  color: #506a7f;
+}
+.procedure-task-count {
+  font-size: 13px;
+  color: #1f587f;
+  text-align: right;
+}
+.procedure-batch-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #f7fbff;
+  font-size: 13px;
+  color: #365974;
+}
+.procedure-batch-toolbar > .primary {
+  margin-left: auto;
+}
+.procedure-template-note,
+.procedure-prerequisite {
+  padding: 0 16px;
+  font-size: 12px;
+  color: #526c81;
+  line-height: 1.8;
+}
+.procedure-prerequisite {
+  color: #805000;
+}
+.procedure-person {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto minmax(130px, auto);
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  border-top: 1px solid #e0e9f1;
+}
+.procedure-person > input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  accent-color: #0067ac;
+}
+.procedure-person-info {
+  min-width: 0;
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+.procedure-person-info .person-name {
+  text-align: left;
+  font-size: 14px;
+}
+.procedure-person-info small {
+  color: #4c677d;
+  font-size: 12px;
+}
+.procedure-ineligible {
+  color: #805000;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.procedure-person-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.procedure-extras {
+  margin-top: 20px;
+  padding: 14px;
+  border: 1px solid #d3e1ec;
+  border-radius: 9px;
+}
+.procedure-extras > summary {
+  color: #244d6c;
+  cursor: pointer;
+  font-weight: 650;
+}
+.procedure-extras > p {
+  color: #4c677d;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.export-form-selectors,
+.export-common-fields > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.export-common-fields {
+  min-width: 0;
+  padding: 16px;
+  margin: 18px 0;
+  border: 1px solid #cbdfea;
+  border-radius: 9px;
+}
+.export-common-fields legend {
+  padding: 0 6px;
+  color: #174f77;
+  font-size: 14px;
+  font-weight: 650;
+}
+.export-common-fields > p {
+  color: #4d677e;
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.export-preview-section h3 {
+  font-size: 15px;
+  color: #174f77;
+}
+.export-preview-section,
+.export-form-selectors > .field,
+.export-common-fields .field {
+  min-width: 0;
+}
+.export-preview {
+  overflow-x: auto;
+  max-width: 100%;
+  border: 1px solid #d7e3ed;
+  border-radius: 7px;
+}
+.export-preview table {
+  min-width: 700px;
+  border-collapse: collapse;
+  width: 100%;
+}
+.export-preview :is(th, td) {
+  padding: 9px;
+  border-bottom: 1px solid #dfe8ef;
+  font-size: 12px;
+  color: #33536d;
+  text-align: left;
+  white-space: nowrap;
+}
+.export-preview th {
+  background: #edf6fc;
+}
+.export-preview .missing,
+.export-missing {
+  color: #805000;
+  background: #fff6e5;
+}
+.export-missing {
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+@media (max-width: 750px) {
+  .procedure-person {
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+    padding: 12px;
+  }
+  .procedure-person > .work-badge,
+  .procedure-person-actions {
+    grid-column: 2;
+    justify-self: start;
+  }
+  .procedure-batch-toolbar > .primary {
+    width: 100%;
+    margin: 0;
+    justify-content: center;
+  }
+  .export-form-selectors,
+  .export-common-fields > div {
+    grid-template-columns: 1fr;
+  }
+}
 .stage-lifecycle-alert {
   display: block;
   padding: 5px 8px;

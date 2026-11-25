@@ -31,7 +31,12 @@ test("parallel document and education work is current while host accounts remain
   assert.equal(roadmap.stages[0].done, true);
   assert.equal(roadmap.stages[1].done, false);
   assert.equal(roadmap.current.id, "submission");
-  assert.ok(roadmap.mine.some((r) => r.task.id === "O10"));
+  assert.ok(roadmap.mine.some((r) => r.task.id === "O11"));
+  assert.ok(
+    roadmap.waiting.some(
+      (r) => r.task.id === "O10" && r.blockedBy.includes("O08"),
+    ),
+  );
   assert.ok(roadmap.waiting.some((r) => r.task.id === "O06"));
   assert.deepEqual(data, before);
 });

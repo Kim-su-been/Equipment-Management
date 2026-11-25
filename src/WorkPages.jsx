@@ -15,6 +15,7 @@ import {
 import BrandCharacters from "./BrandCharacters.jsx";
 import MemberRoadmap from "./MemberRoadmap.jsx";
 import AdminStageBoard from "./AdminStageBoard.jsx";
+import ProcedureTaskBoard from "./ProcedureTaskBoard.jsx";
 import { memberRoadmap } from "./member-roadmap.js";
 import { STATUS, PROJECTS } from "./data.js";
 import {
@@ -534,12 +535,13 @@ export function TaskBoard({
   actionFor,
   onAdd,
   onExport,
+  scope,
 }) {
-  const [owner, setOwner] = useState("mine"),
-    [status, setStatus] = useState("actionable"),
+  const [owner, setOwner] = useState(admin ? "all" : "mine"),
+    [status, setStatus] = useState(admin ? "open" : "actionable"),
     [due, setDue] = useState("all"),
     [search, setSearch] = useState(""),
-    [view, setView] = useState("list"),
+    [view, setView] = useState(admin ? "procedure" : "list"),
     [limit, setLimit] = useState(8);
   const rows = taskRows(people, data),
     myOwner = admin ? "admin" : "member",
@@ -616,7 +618,11 @@ export function TaskBoard({
       <header className="work-title">
         <div>
           <h1>{admin ? "준비 작업" : "나의 작업"}</h1>
-          <p>현재 담당자가 처리할 미완료 작업을 먼저 보여드립니다.</p>
+          <p>
+            {admin
+              ? "투입·수행·철수 단계별로 같은 업무의 인원을 묶어 기안 첨부파일을 작성하세요."
+              : "현재 담당자가 처리할 미완료 작업을 먼저 보여드립니다."}
+          </p>
         </div>
         {admin && (
           <>
@@ -698,33 +704,45 @@ export function TaskBoard({
               value={view}
               onChange={(e) => setView(e.target.value)}
             >
+              {admin && <option value="procedure">단계·업무별 묶음</option>}
               <option value="list">기한순 작업</option>
               <option value="person">인원별 요약</option>
             </select>
           </label>
         </div>
         <p>{filtered.length}건 · 완료 작업은 아래에서 펼쳐볼 수 있습니다.</p>
-        {view === "list"
-          ? filtered.slice(0, limit).map(renderRow)
-          : people
-              .filter((p) => filtered.some((r) => r.person.id === p.id))
-              .map((p) => {
-                const state = personState(p, data),
-                  list = filtered.filter((r) => r.person.id === p.id);
-                return (
-                  <details className="person-task-summary" key={p.id}>
-                    <summary>
-                      <b>{p.name}</b>
-                      <span>
-                        {date(p.start)} 투입 · 남은 필수{" "}
-                        {state.remaining.length}건
-                      </span>
-                      <small>다음: {list[0]?.task.title}</small>
-                    </summary>
-                    {list.map(renderRow)}
-                  </details>
-                );
-              })}
+        {view === "procedure" ? (
+          <ProcedureTaskBoard
+            rows={filtered}
+            data={data}
+            scope={scope}
+            onExport={onExport}
+            onTask={onTask}
+            actionFor={actionFor}
+          />
+        ) : view === "list" ? (
+          filtered.slice(0, limit).map(renderRow)
+        ) : (
+          people
+            .filter((p) => filtered.some((r) => r.person.id === p.id))
+            .map((p) => {
+              const state = personState(p, data),
+                list = filtered.filter((r) => r.person.id === p.id);
+              return (
+                <details className="person-task-summary" key={p.id}>
+                  <summary>
+                    <b>{p.name}</b>
+                    <span>
+                      {date(p.start)} 투입 · 남은 필수 {state.remaining.length}
+                      건
+                    </span>
+                    <small>다음: {list[0]?.task.title}</small>
+                  </summary>
+                  {list.map(renderRow)}
+                </details>
+              );
+            })
+        )}
         {!filtered.length && (
           <p className="work-empty">
             선택한 조건에서 처리할 작업이 없습니다. 담당 범위나 상태 필터를

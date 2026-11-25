@@ -200,6 +200,30 @@ try {
   await page.reload();
   await expect(page.locator(".sidebar")).toBeVisible();
   console.log("offline: prerequisite tasks");
+  // Upload a real certificate and retain its original bytes across reload and backup.
+  await page
+    .locator(".sidebar")
+    .getByRole("button", { name: "교육", exact: true })
+    .click();
+  await page
+    .locator(".education-card")
+    .first()
+    .getByRole("button", { name: "수료증 등록", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .locator("input[type=file]")
+    .setInputFiles({
+      name: "offline-certificate.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-1.4 offline certificate"),
+    });
+  await expect(page.getByRole("dialog")).toContainText("완료");
+  await close();
+  current = await state();
+  assert.equal(current.people[0].tasks.O08, "done");
+  const certificateId = current.people[0].files.O08.storageId;
+  assert.ok(certificateId);
   // Original document + right-hand guide + missing-field blocking + draft persistence + actual local original.
   await page
     .locator(".sidebar")
@@ -238,30 +262,6 @@ try {
   assert.equal(original.status, 200);
   assert.ok(original.body.includes("김하늘"));
   console.log("offline: document submitted");
-  // Upload a real certificate and retain its original bytes across reload and backup.
-  await page
-    .locator(".sidebar")
-    .getByRole("button", { name: "교육", exact: true })
-    .click();
-  await page
-    .locator(".education-card")
-    .first()
-    .getByRole("button", { name: "수료증 등록", exact: true })
-    .click();
-  await page
-    .getByRole("dialog")
-    .locator("input[type=file]")
-    .setInputFiles({
-      name: "offline-certificate.pdf",
-      mimeType: "application/pdf",
-      buffer: Buffer.from("%PDF-1.4 offline certificate"),
-    });
-  await expect(page.getByRole("dialog")).toContainText("완료");
-  await close();
-  current = await state();
-  assert.equal(current.people[0].tasks.O08, "done");
-  const certificateId = current.people[0].files.O08.storageId;
-  assert.ok(certificateId);
   await role("pmo");
   await roster();
   await page.locator("tbody tr").filter({ hasText: "김하늘" }).first().click();
