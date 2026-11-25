@@ -2,11 +2,8 @@ import React from "react";
 import { CheckCircle2, ArrowRight } from "lucide-react";
 import { adminStageGroups } from "./admin-stage-groups.js";
 const date = (s) => (s ? s.replaceAll("-", ".") : "미정");
-export default function AdminStageBoard({
-  people,
-  data,
-  scope,
-  today,
+export function AdminStageDetails({
+  group,
   canInvite,
   onOpen,
   onTask,
@@ -14,7 +11,6 @@ export default function AdminStageBoard({
   onLifecycle,
   onRepair,
 }) {
-  const groups = adminStageGroups(people, data, scope, today);
   function action(entry) {
     if (entry.identity.missing)
       return { label: "인원 정보 복구", run: () => onRepair(entry.person.id) };
@@ -100,15 +96,73 @@ export default function AdminStageBoard({
     );
   }
   return (
+    <div className="admin-stage-detail">
+      <div className="admin-stage-detail-summary">
+        <strong>
+          {group.percent ?? "—"}
+          {group.percent !== null && <small>%</small>}
+        </strong>
+        <span>
+          완료 {group.completed}명 / 대상 {group.people.length}명
+        </span>
+        <p>{group.description}</p>
+        {group.id === "exit" && (
+          <p>철수 지정 또는 종료 임박 인원을 대상으로 집계합니다.</p>
+        )}
+      </div>
+      {group.steps.map((step) => (
+        <details
+          className="phase-person-step"
+          key={step.id}
+          data-phase-task={step.id}
+        >
+          <summary>
+            <span>{step.title}</span>
+            <b>{step.people.length}명</b>
+          </summary>
+          <ul className="admin-stage-people">
+            {step.people.map(personCard)}
+            {!step.people.length && (
+              <li className="stage-empty">
+                이 업무에 남은 대상 인원이 없습니다.
+              </li>
+            )}
+          </ul>
+        </details>
+      ))}
+      {group.completed > 0 && (
+        <details className="phase-person-step phase-completed">
+          <summary>
+            <span>단계 완료 인원</span>
+            <b>{group.completed}명</b>
+          </summary>
+          <ul className="admin-stage-people">
+            {group.people.filter((p) => p.phaseComplete).map(personCard)}
+          </ul>
+        </details>
+      )}
+    </div>
+  );
+}
+
+export default function AdminStageBoard({
+  people,
+  data,
+  scope,
+  today,
+  onStage,
+}) {
+  const groups = adminStageGroups(people, data, scope, today);
+  return (
     <>
       <div className="admin-stage-summary">
         <p>
-          준비 작업과 같은 투입·수행·철수 단계입니다. 세부 업무를 펼쳐 대상
-          인원을 확인하세요. 병행 업무는 여러 단계에 표시될 수 있습니다.
+          단계를 선택하면 세부 업무별 인원과 처리할 작업을 팝업에서 확인할 수
+          있습니다.
         </p>
       </div>
       <ol
-        className="admin-stage-board procedure-stage-board"
+        className="admin-stage-board procedure-stage-board compact-stage-board"
         aria-label="단계별 준비 인원"
       >
         {groups.map((group, index) => (
@@ -117,58 +171,34 @@ export default function AdminStageBoard({
             className={`admin-stage-column ${group.id}`}
             data-stage-id={group.id}
           >
-            <header className="admin-stage-heading">
-              <div>
+            <button
+              type="button"
+              className="admin-stage-open"
+              aria-haspopup="dialog"
+              aria-label={`${group.title} 준비 인원 보기`}
+              onClick={() => onStage(group.id)}
+            >
+              <span className="admin-stage-totals">
                 <span className="admin-stage-number">
                   {String(index + 1).padStart(2, "0")}
                 </span>
-                <strong>
+                <b>
                   {group.percent ?? "—"}
                   {group.percent !== null && <small>%</small>}
-                </strong>
-              </div>
-              <h3>{group.title}</h3>
-              <p>
+                </b>
+              </span>
+              <strong>{group.title}</strong>
+              <span>
                 완료 {group.completed}명 / 대상 {group.people.length}명
-              </p>
-              <p>{group.description}</p>
-              {group.id === "exit" && (
-                <small className="phase-exit-note">
-                  철수 지정 또는 종료 임박 인원 기준
-                </small>
-              )}
-            </header>
-            {group.steps.map((step) => (
-              <details
-                className="phase-person-step"
-                key={step.id}
-                data-phase-task={step.id}
-              >
-                <summary>
-                  <span>{step.title}</span>
-                  <b>{step.people.length}명</b>
-                </summary>
-                <ul className="admin-stage-people">
-                  {step.people.map(personCard)}
-                  {!step.people.length && (
-                    <li className="stage-empty">
-                      이 업무에 남은 대상 인원이 없습니다.
-                    </li>
-                  )}
-                </ul>
-              </details>
-            ))}
-            {group.completed > 0 && (
-              <details className="phase-person-step phase-completed">
-                <summary>
-                  <span>단계 완료 인원</span>
-                  <b>{group.completed}명</b>
-                </summary>
-                <ul className="admin-stage-people">
-                  {group.people.filter((p) => p.phaseComplete).map(personCard)}
-                </ul>
-              </details>
-            )}
+              </span>
+              <span className="stage-open-description">
+                {group.description}
+              </span>
+              <span className="stage-open-link">
+                미완료 {group.people.length - group.completed}명 · 세부 업무
+                보기 <ArrowRight size={15} />
+              </span>
+            </button>
           </li>
         ))}
       </ol>

@@ -2337,3 +2337,121 @@ body {
     padding-right: 48px;
   }
 }
+
+/* Dashboard phase summaries keep the detailed personnel lists inside a dialog. */
+.compact-stage-board .admin-stage-column {
+  padding: 0;
+}
+.admin-stage-open {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 8px;
+  padding: 16px;
+  background: transparent;
+  color: #365772;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.admin-stage-open:hover {
+  background: #eaf4fc;
+}
+.admin-stage-open:focus-visible {
+  outline: 3px solid #0067ac;
+  outline-offset: 3px;
+}
+.admin-stage-totals {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+.admin-stage-totals > b {
+  font-size: 26px;
+  color: #0067ac;
+}
+.admin-stage-totals small {
+  margin-left: 3px;
+  font-size: 13px;
+}
+.admin-stage-open > strong {
+  font-size: 16px;
+  color: #17496f;
+}
+.stage-open-description {
+  font-size: 12px;
+  line-height: 1.6;
+}
+.stage-open-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin-top: auto;
+  padding-top: 8px;
+  color: #0067ac;
+  font-weight: 700;
+}
+.admin-stage-detail-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  border: 1px solid #cddfeb;
+  border-radius: 8px;
+  background: #f1f8fe;
+  color: #285471;
+}
+.admin-stage-detail-summary > strong {
+  color: #0067ac;
+  font-size: 28px;
+}
+.admin-stage-detail-summary small {
+  font-size: 14px;
+  margin-left: 3px;
+}
+.admin-stage-detail-summary p {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 13px;
+}
+.admin-stage-popup .phase-person-step > summary {
+  padding: 14px 6px;
+  font-size: 14px;
+}
+.admin-stage-popup .admin-stage-people {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-height: none;
+  overflow: visible;
+  padding: 4px 3px 14px;
+}
+.project-preparation > span:has(.project-completion-rate) {
+  align-items: center;
+  gap: 10px;
+}
+.project-preparation .project-completion-rate {
+  color: #0067ac;
+  font-size: 28px;
+  line-height: 1.2;
+}
+.project-completion-rate small {
+  font-size: 14px;
+  margin-left: 3px;
+}
+@media (max-width: 750px) {
+  .admin-stage-popup .admin-stage-people {
+    grid-template-columns: 1fr;
+  }
+  .admin-stage-open {
+    padding: 13px 15px;
+    gap: 6px;
+  }
+}

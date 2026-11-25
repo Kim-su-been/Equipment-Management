@@ -84,6 +84,8 @@ import LegacyMigration from "./LegacyMigration.jsx";
 import OnlineDocument from "./OnlineDocument.jsx";
 import { loadDocumentBackground } from "./document-templates.js";
 import TaskExportForm from "./TaskExportForm.jsx";
+import { AdminStageDetails } from "./AdminStageBoard.jsx";
+import { adminStageGroups } from "./admin-stage-groups.js";
 import { RoadmapStageDetails } from "./MemberRoadmap.jsx";
 import { memberRoadmap } from "./member-roadmap.js";
 import DraftCompletionControls from "./DraftCompletionControls.jsx";
@@ -958,6 +960,7 @@ export default function App({ initialState, actor, onLogout }) {
           )
         }
         onTasks={() => go("tasks")}
+        onStage={(stage) => setModal({ type: "adminStage", stage })}
         onOpen={openPerson}
         onTask={openWorkTask}
         onInvite={invitePeople}
@@ -1856,6 +1859,43 @@ export default function App({ initialState, actor, onLogout }) {
         (t) => t.id === modal.task,
       );
     const close = () => setModal(null);
+    if (modal.type === "adminStage" && admin) {
+      const group = adminStageGroups(scoped, data, scope).find(
+        (g) => g.id === modal.stage,
+      );
+      if (!group) return null;
+      return (
+        <Modal
+          title={`${group.title} · 준비 인원`}
+          subtitle="세부 업무를 펼쳐 대상 인원을 확인하고 작업을 처리하세요."
+          onClose={close}
+          wide
+          className="admin-stage-popup"
+        >
+          <div className="modal-body">
+            <AdminStageDetails
+              group={group}
+              canInvite={actor.scope === "PMO"}
+              onOpen={openPerson}
+              onTask={openWorkTask}
+              onInvite={invitePeople}
+              onLifecycle={(person) =>
+                setModal({ type: "editPerson", id: person.id })
+              }
+              onRepair={(id) => {
+                close();
+                showPeople({ repairId: id });
+              }}
+            />
+          </div>
+          <footer>
+            <button className="btn" onClick={close}>
+              닫기
+            </button>
+          </footer>
+        </Modal>
+      );
+    }
     if (modal.type === "addTask" && admin)
       return (
         <Modal

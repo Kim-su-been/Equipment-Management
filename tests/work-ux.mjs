@@ -175,6 +175,17 @@ try {
   await expect(page.locator(".dashboard-work")).toContainText(
     "단계별 준비 인원",
   );
+  await expect(page.locator(".dashboard-work .phase-person-step")).toHaveCount(
+    0,
+  );
+  const entryTrigger = page.getByRole("button", {
+    name: "투입 단계 준비 인원 보기",
+    exact: true,
+  });
+  await entryTrigger.click();
+  await expect(
+    page.getByRole("dialog", { name: "투입 단계 · 준비 인원", exact: true }),
+  ).toBeVisible();
   const visibleNames = await page
     .locator(".stage-person-profile > strong")
     .allTextContents();
@@ -188,18 +199,37 @@ try {
     .click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("dialog").getByLabel("닫기", { exact: true }).click();
+  await entryTrigger.click();
+  await page
+    .locator('.phase-person-step[data-phase-task="O02"] > summary')
+    .click();
   await page
     .locator('.phase-person-step[data-phase-task="O02"] .stage-person-action')
     .first()
     .click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("dialog").getByLabel("닫기", { exact: true }).click();
+  for (const title of ["투입 단계", "수행 단계", "철수 단계"]) {
+    const trigger = page.getByRole("button", {
+      name: `${title} 준비 인원 보기`,
+      exact: true,
+    });
+    await trigger.click();
+    await expect(
+      page.getByRole("dialog", { name: `${title} · 준비 인원`, exact: true }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(trigger).toBeFocused();
+  }
   for (const [role, project] of [
     ["sfa", "SFA"],
     ["gw", "그룹웨어"],
   ]) {
     await chooseDemoRole(page, role);
     await expect(page.locator(".admin-stage-column")).toHaveCount(3);
+    await page
+      .getByRole("button", { name: "투입 단계 준비 인원 보기", exact: true })
+      .click();
     const projects = await page
       .locator(".stage-person-profile > small")
       .allTextContents();
@@ -207,6 +237,7 @@ try {
       projects.length > 0 &&
         projects.every((text) => text.startsWith(project + " ·")),
     );
+    await page.keyboard.press("Escape");
   }
   await chooseDemoRole(page, "pmo");
   await expect(page.locator(".review-toolbar")).toHaveText(
@@ -232,6 +263,26 @@ try {
     );
     await nav("전체 현황");
   }
+  for (const project of ["SFA", "그룹웨어"]) {
+    const metric = completionMetrics(
+      initial.people.filter((p) => p.project === project),
+      initial,
+    )[0];
+    const card = page.getByRole("button", {
+      name: `${project} 준비 완료율 · ${metric.percent}% · 완료 ${metric.completed}명 / 전체 ${metric.total}명`,
+      exact: true,
+    });
+    await expect(card).toContainText(`${metric.percent}%`);
+    await card.click();
+    await expect(page.getByLabel("프로젝트 필터")).toHaveValue(project);
+    await expect(page.getByLabel("완료율 항목 필터")).toHaveValue("overall");
+    await expect(page.locator(".work-table tbody tr")).toHaveCount(
+      metric.remaining || metric.completed,
+    );
+    await nav("전체 현황");
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(350);
   await page.screenshot({
     path: "artifacts/work-dashboard-after.png",
     fullPage: true,
@@ -544,6 +595,29 @@ try {
       () => document.documentElement.scrollWidth <= innerWidth + 1,
     ),
   );
+  await page
+    .getByRole("button", { name: "투입 단계 준비 인원 보기", exact: true })
+    .click();
+  await page
+    .locator('.phase-person-step[data-phase-task="O02"] > summary')
+    .click();
+  await expect(
+    page
+      .locator(
+        '.admin-stage-popup [data-phase-task="O02"] .stage-person-profile',
+      )
+      .first(),
+  ).toBeVisible();
+  assert.ok(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  );
+  await page.screenshot({
+    path: "artifacts/host-stage-popup-mobile.png",
+    fullPage: true,
+  });
+  await page.keyboard.press("Escape");
   await nav("인원 명단");
   assert.ok(
     await page.evaluate(

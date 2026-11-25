@@ -79,6 +79,7 @@ export function WorkDashboard({
   onReviews,
   onMail,
   onTasks,
+  onStage,
   onOpen,
   onTask,
   onInvite,
@@ -184,7 +185,8 @@ export function WorkDashboard({
               단계별 준비 인원 <span>조회 범위 {people.length}명</span>
             </h2>
             <p>
-              준비 단계 아래에서 해당 인원을 확인하고 필요한 조치로 이동하세요.
+              단계를 선택해 업무별 대상 인원을 확인하고 필요한 조치로
+              이동하세요.
             </p>
           </div>
           {btn("준비 작업 전체 보기", onTasks)}
@@ -213,12 +215,7 @@ export function WorkDashboard({
           data={data}
           scope={scope}
           today={today}
-          canInvite={canImport}
-          onOpen={onOpen}
-          onTask={onTask}
-          onInvite={onInvite}
-          onLifecycle={onLifecycle}
-          onRepair={(id) => onPeople({ repairId: id })}
+          onStage={onStage}
         />
       </section>
       <section className="card work-card">
@@ -228,30 +225,52 @@ export function WorkDashboard({
         <div className="project-preparation-grid">
           {projects.map((project) => {
             const list = people.filter((p) => p.project === project),
-              ready = list.filter((p) => personState(p, data).ready).length,
-              final = list.filter((p) => personState(p, data).final).length;
+              metric = completionMetrics(list, data).find(
+                (m) => m.id === "overall",
+              );
             return (
               <button
                 className="project-preparation"
                 key={project}
-                onClick={() => onPeople({ project })}
+                aria-label={`${project} 준비 완료율 · ${metric.percent ?? "대상 없음"}${metric.percent === null ? "" : "%"} · 완료 ${metric.completed}명 / 전체 ${metric.total}명`}
+                onClick={() =>
+                  onPeople({
+                    project,
+                    completionMetric: "overall",
+                    completionState: metric.remaining
+                      ? "incomplete"
+                      : "complete",
+                  })
+                }
               >
                 <strong>
                   {project}
                   <small>{list.length}명</small>
                 </strong>
                 <span>
-                  필수 준비 충족 {ready}명 · 최종 확인 완료 {final}명
+                  전체 투입 준비 완료율
+                  <b className="project-completion-rate">
+                    {metric.percent ?? "—"}
+                    {metric.percent !== null && <small>%</small>}
+                  </b>
+                </span>
+                <span>
+                  완료 {metric.completed}명 / 전체 {metric.total}명
                 </span>
                 <span className="work-progress">
                   <i
                     style={{
-                      width: `${list.length ? (ready / list.length) * 100 : 0}%`,
+                      width: `${metric.percent || 0}%`,
                     }}
                   />
                 </span>
                 <span>
-                  미완료 {list.length - ready}명 <ArrowRight size={15} />
+                  {metric.total
+                    ? metric.remaining
+                      ? `미완료 ${metric.remaining}명 보기`
+                      : "완료 인원 보기"
+                    : "대상 인원 없음"}{" "}
+                  <ArrowRight size={15} />
                 </span>
               </button>
             );
