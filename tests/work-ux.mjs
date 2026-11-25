@@ -168,8 +168,43 @@ try {
     count = summaryCounts(initial.people, initial, [], "2026-11-23");
   for (const p of initial.people)
     assert.ok(
-      !(await page.locator(".work-action-list").innerText()).includes(p.id),
+      !(await page.locator(".admin-stage-board").innerText()).includes(p.id),
     );
+  await expect(page.locator(".admin-stage-column")).toHaveCount(5);
+  await expect(page.locator(".dashboard-work")).toContainText(
+    "단계별 준비 인원",
+  );
+  const visibleNames = await page
+    .locator(".stage-person-profile > strong")
+    .allTextContents();
+  assert.equal(new Set(visibleNames).size, initial.people.length);
+  await page
+    .locator(".admin-stage-column.accounts .stage-person-profile")
+    .first()
+    .click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.getByRole("dialog").getByLabel("닫기", { exact: true }).click();
+  await page
+    .locator(".admin-stage-column.accounts .stage-person-action")
+    .first()
+    .click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.getByRole("dialog").getByLabel("닫기", { exact: true }).click();
+  for (const [role, project] of [
+    ["sfa", "SFA"],
+    ["gw", "그룹웨어"],
+  ]) {
+    await chooseDemoRole(page, role);
+    await expect(page.locator(".admin-stage-column")).toHaveCount(5);
+    const projects = await page
+      .locator(".stage-person-profile > small")
+      .allTextContents();
+    assert.ok(
+      projects.length > 0 &&
+        projects.every((text) => text.startsWith(project + " ·")),
+    );
+  }
+  await chooseDemoRole(page, "pmo");
   await expect(page.locator(".review-toolbar")).toHaveText(
     /시연 모드.*시연 설정/,
   );

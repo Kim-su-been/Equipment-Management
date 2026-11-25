@@ -1,6 +1,14 @@
 import { requiredTasks } from "./data.js";
 import { personState, taskRows } from "./work-summary.js";
 
+export const PREPARATION_STAGES = [
+  { id: "registration", title: "본인 등록" },
+  { id: "accounts", title: "계정 준비" },
+  { id: "submission", title: "교육·서류 제출" },
+  { id: "review", title: "주관사 검토" },
+  { id: "final", title: "최종 준비 확인" },
+];
+
 // Presentation only: use effective evidence/dependency states without writing tasks.
 export function memberRoadmap(person, data) {
   const state = personState(person, data);
@@ -32,8 +40,7 @@ export function memberRoadmap(person, data) {
   });
   const stages = [
     {
-      id: "registration",
-      title: "본인 등록",
+      ...PREPARATION_STAGES[0],
       countLabel: "완료",
       description: "기본 정보를 확인하고 본인 정보를 등록해요.",
       items: [
@@ -46,29 +53,25 @@ export function memberRoadmap(person, data) {
       ],
     },
     {
-      id: "accounts",
-      title: "계정 준비",
+      ...PREPARATION_STAGES[1],
       countLabel: "완료",
       description: "주관사의 계정 발급 후 최초 접속을 확인해요.",
       items: accounts,
     },
     {
-      id: "submission",
-      title: "교육·서류 제출",
+      ...PREPARATION_STAGES[2],
       countLabel: "제출·처리",
       description: "교육 수료증과 서류를 제출하고 추가 작업을 처리해요.",
       items: submissions.map(submitItem),
     },
     {
-      id: "review",
-      title: "주관사 검토",
+      ...PREPARATION_STAGES[3],
       countLabel: "승인",
       description: "제출물 검토 결과를 확인하고 보완 요청을 처리해요.",
       items: evidence,
     },
     {
-      id: "final",
-      title: "최종 준비 확인",
+      ...PREPARATION_STAGES[4],
       countLabel: "확인",
       description: "출입 등 남은 필수 준비와 주관사의 최종 확인을 기다려요.",
       items: rows

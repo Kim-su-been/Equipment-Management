@@ -1589,6 +1589,256 @@ body {
 .roadmap-return {
   margin: 0 0 12px;
 }
+
+/* Host overview: stages first, then the people with work in each stage. */
+.admin-stage-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin: 14px 0;
+  color: #405f77;
+  font-size: 12px;
+}
+.admin-stage-summary > span {
+  flex-shrink: 0;
+  padding: 6px 9px;
+  border-radius: 6px;
+  color: #146243;
+  background: #edf8f2;
+}
+.admin-stage-summary p {
+  margin: 3px 0 0;
+  line-height: 1.7;
+}
+.admin-stage-board {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  align-items: stretch;
+}
+.admin-stage-column {
+  min-width: 0;
+  background: #f5f9fd;
+  border: 1px solid #d3e2ee;
+  border-radius: 10px;
+  border-top: 3px solid #5b9bc8;
+  padding: 12px 10px;
+}
+.admin-stage-column.review {
+  border-top-color: #253a71;
+}
+.admin-stage-column.final {
+  border-top-color: #008c89;
+}
+.admin-stage-heading {
+  min-height: 103px;
+  padding: 0 2px 12px;
+}
+.admin-stage-heading > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.admin-stage-number {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border: 1px solid #c6ddec;
+  border-radius: 50%;
+  background: #fff;
+  color: #0067ac;
+  font-size: 11px;
+  font-weight: 700;
+}
+.admin-stage-heading strong {
+  font-size: 23px;
+  line-height: 1;
+  color: #0067ac;
+}
+.admin-stage-heading strong small {
+  font-size: 11px;
+  color: #47647b;
+  margin-left: 4px;
+}
+.admin-stage-heading h3 {
+  margin: 0;
+  color: #17496f;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.admin-stage-heading p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #4c677e;
+  line-height: 1.6;
+}
+.admin-stage-people {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  list-style: none;
+  padding: 1px 3px 3px;
+  margin: 0 -3px;
+  max-height: 365px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #9dbed7 transparent;
+}
+.stage-person {
+  min-width: 0;
+  border: 1px solid #ccdeec;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.stage-person.confirmed {
+  border-color: #a5d4c1;
+}
+.stage-person.held {
+  border-color: #e4c68d;
+}
+.stage-person-profile {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  padding: 11px 10px 6px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #31516a;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.stage-person-profile:hover {
+  background: #f1f8fe;
+}
+.stage-person-profile > strong {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #14517e;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.stage-person.confirmed .stage-person-profile > strong > svg {
+  color: #167550;
+  flex-shrink: 0;
+}
+.stage-person-profile > span {
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.stage-person-profile > small {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #4c687f;
+  overflow-wrap: anywhere;
+}
+.stage-person-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 5px 7px;
+  border-top: 1px solid #deebf4;
+  background: #f5faff;
+}
+.stage-person-flags {
+  min-width: 0;
+}
+.stage-person-flags .work-badge {
+  padding: 3px 5px;
+  font-size: 11px;
+}
+.stage-person-remaining {
+  font-size: 11px;
+  color: #526b80;
+}
+.stage-person-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  width: auto;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 3px 2px;
+  color: #005d9c;
+  background: #f5faff;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.stage-person-action:hover {
+  background: #e3f2fe;
+}
+.app-shell .stage-person-profile:focus-visible,
+.app-shell .stage-person-action:focus-visible {
+  outline-offset: -3px;
+}
+.stage-lifecycle-alert {
+  display: block;
+  padding: 5px 8px;
+  color: #805000;
+  background: #fff4df;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.stage-empty {
+  padding: 17px 8px;
+  border: 1px dashed #c7dbe9;
+  border-radius: 7px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #536d82;
+}
+@media (min-width: 751px) and (max-width: 1199px) {
+  .admin-stage-board {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 750px) {
+  .admin-stage-board {
+    grid-template-columns: 1fr;
+  }
+  .admin-stage-heading {
+    min-height: 0;
+    position: relative;
+    padding-right: 55px;
+  }
+  .admin-stage-heading > div {
+    justify-content: flex-start;
+    margin-bottom: 6px;
+  }
+  .admin-stage-heading strong {
+    position: absolute;
+    right: 0;
+    top: 8px;
+  }
+  .admin-stage-people {
+    max-height: none;
+  }
+  .admin-stage-summary {
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .stage-person-profile > small,
+  .stage-person-profile > span,
+  .stage-person-action {
+    font-size: 12px;
+  }
+}
 @media (max-width: 750px) {
   .member-work .work-title .work-mascot {
     position: absolute;

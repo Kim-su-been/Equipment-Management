@@ -8,13 +8,13 @@ import {
   ChevronDown,
   Search,
   AlertTriangle,
-  CheckCircle2,
   Users,
   Mail,
   ClipboardList,
 } from "lucide-react";
 import BrandCharacters from "./BrandCharacters.jsx";
 import MemberRoadmap from "./MemberRoadmap.jsx";
+import AdminStageBoard from "./AdminStageBoard.jsx";
 import { memberRoadmap } from "./member-roadmap.js";
 import { STATUS, PROJECTS } from "./data.js";
 import {
@@ -75,7 +75,6 @@ export function WorkDashboard({
 }) {
   const today = businessDate(),
     count = summaryCounts(people, data, mailRequests, today),
-    todos = attentionRows(people, data, today),
     projects = PROJECTS.filter(
       (project) => scope === "PMO" || scope === project,
     );
@@ -91,16 +90,6 @@ export function WorkDashboard({
         .filter((id) => id && !data.people.some((p) => p.id === id)),
     ),
   ];
-  const run = (r) => {
-    const p = data.people.find((p) => p.id === r.personId);
-    if (!p || personIdentity(data, r.personId).missing)
-      return onPeople({ repairId: r.personId });
-    if (r.kind === "invite") return onInvite(p.id);
-    if (r.kind === "lifecycle" && r.state.ready && r.state.final)
-      return onLifecycle(p);
-    if (r.next) return onTask(p, r.next.task.id);
-    onOpen(p);
-  };
   return (
     <div className="work-page dashboard-work">
       <header className="work-title">
@@ -156,9 +145,11 @@ export function WorkDashboard({
         <div className="work-card-heading">
           <div>
             <h2>
-              처리할 업무 <span>{todos.length}명</span>
+              단계별 준비 인원 <span>조회 범위 {people.length}명</span>
             </h2>
-            <p>예정일 경과와 투입 임박 항목부터 정렬했습니다.</p>
+            <p>
+              준비 단계 아래에서 해당 인원을 확인하고 필요한 조치로 이동하세요.
+            </p>
           </div>
           {btn("준비 작업 전체 보기", onTasks)}
         </div>
@@ -181,74 +172,18 @@ export function WorkDashboard({
             )}
           </div>
         )}
-        <div className="work-action-list">
-          {todos.slice(0, 6).map((r) => {
-            const identity = personIdentity(data, r.personId),
-              p = identity.person;
-            return (
-              <article className="work-action" key={r.personId}>
-                <div>
-                  <button
-                    className="person-name"
-                    onClick={() =>
-                      p ? onOpen(p) : onPeople({ repairId: r.personId })
-                    }
-                  >
-                    {identity.name}
-                  </button>
-                  <small>
-                    {identity.company} · {identity.project} · 투입{" "}
-                    {date(p?.start)}
-                  </small>
-                </div>
-                <div>
-                  <WorkBadge tone={r.rank < 2 ? "orange" : "gray"}>
-                    {r.reason}
-                  </WorkBadge>
-                  <span>
-                    {r.next?.task.title || "등록 정보 확인"}
-                    {r.state.remaining.length > 0 &&
-                      ` 외 필수 ${Math.max(0, r.state.remaining.length - 1)}건`}
-                  </span>
-                </div>
-                <div>
-                  <small>담당자</small>
-                  <span>
-                    {r.kind === "invite"
-                      ? "PMO / 수행사 본인"
-                      : r.next?.contact || `${identity.project} 담당자`}
-                  </span>
-                </div>
-                {btn(
-                  identity.missing
-                    ? "인원 정보 복구"
-                    : r.kind === "invite"
-                      ? "초대 링크 보기"
-                      : r.kind === "lifecycle" && r.state.final
-                        ? "투입 상태 변경"
-                        : r.kind === "review"
-                          ? "제출물 검토"
-                          : r.kind === "final"
-                            ? "최종 준비 확인"
-                            : "준비 작업 보기",
-                  () => run(r),
-                  r.rank < 2,
-                )}
-              </article>
-            );
-          })}
-          {!todos.length && (
-            <p className="work-empty">
-              <CheckCircle2 size={20} />
-              현재 처리할 준비 업무가 없습니다.
-            </p>
-          )}
-        </div>
-        {todos.length > 6 && (
-          <button className="text-link" onClick={onTasks}>
-            나머지 업무 보기 ({todos.length - 6}명) <ArrowRight size={15} />
-          </button>
-        )}
+        <AdminStageBoard
+          people={people}
+          data={data}
+          scope={scope}
+          today={today}
+          canInvite={canImport}
+          onOpen={onOpen}
+          onTask={onTask}
+          onInvite={onInvite}
+          onLifecycle={onLifecycle}
+          onRepair={(id) => onPeople({ repairId: id })}
+        />
       </section>
       <section className="card work-card">
         <div className="work-card-heading">
