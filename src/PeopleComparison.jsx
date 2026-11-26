@@ -1,3 +1,4 @@
+import PeopleAxisChart from "./PeopleAxisChart.jsx";
 import React, { useState } from "react";
 import { assignmentMetrics } from "./performance-metrics.js";
 import { PERFORMANCE_PROJECTS } from "./performance-data.js";
@@ -164,7 +165,8 @@ export default function PeopleComparison({
   asOf,
   onPerson,
 }) {
-  const [view, setView] = useState("matrix");
+  const [view, setView] = useState("combo");
+  const [selectedGroup, setSelectedGroup] = useState("");
   const [sortMetric, setSortMetric] = useState("completionRate");
   const [metric, setMetric] = useState("punctuality"),
     [order, setOrder] = useState("name");
@@ -187,8 +189,8 @@ export default function PeopleComparison({
     people: people
       .filter((p) => p.project === project)
       .sort((a, b) => {
-        const av = view === "matrix" ? a[sortMetric] : config.value(a),
-          bv = view === "matrix" ? b[sortMetric] : config.value(b);
+        const av = view !== "chart" ? a[sortMetric] : config.value(a),
+          bv = view !== "chart" ? b[sortMetric] : config.value(b);
         if (order !== "name") {
           if (av === null && bv !== null) return 1;
           if (av !== null && bv === null) return -1;
@@ -199,6 +201,17 @@ export default function PeopleComparison({
         return a.name.localeCompare(b.name, "ko") || a.id.localeCompare(b.id);
       }),
   })).filter((g) => g.people.length);
+  const activeGroup =
+    selectedGroup === "all" && groups.length > 1
+      ? "all"
+      : groups.some((g) => g.project === selectedGroup)
+        ? selectedGroup
+        : groups[0]?.project;
+  const visibleGroups =
+    activeGroup === "all"
+      ? groups
+      : groups.filter((g) => g.project === activeGroup);
+  const visiblePeople = visibleGroups.flatMap((g) => g.people);
   return (
     <section
       className="card work-card perf-comparison"
@@ -207,11 +220,11 @@ export default function PeopleComparison({
       <div className="work-card-heading">
         <div>
           <h2 id="perf-comparison-heading">
-            그룹별 인원 비교 <small>{people.length}명</small>
+            그룹별 인원 비교 <small>{visiblePeople.length}명</small>
           </h2>
           <p>
-            배정 건수·완료율·처리기간을 같은 행에서 비교하세요. 인원을 선택하면
-            근거 업무가 열립니다.
+            프로젝트·팀을 선택하고 가로축의 인원별 배정·완료율·처리기간을 한눈에
+            비교하세요.
           </p>
         </div>
         <div className="perf-comparison-controls">
@@ -222,11 +235,12 @@ export default function PeopleComparison({
               value={view}
               onChange={(e) => setView(e.target.value)}
             >
-              <option value="matrix">여러 지표 한눈에</option>
+              <option value="combo">가로축 인원 그래프</option>
+              <option value="matrix">여러 지표 비교표</option>
               <option value="chart">지표별 그래프</option>
             </select>
           </label>
-          {view === "matrix" && (
+          {view !== "chart" && (
             <label>
               정렬 지표
               <select
@@ -272,14 +286,54 @@ export default function PeopleComparison({
           </label>
         </div>
       </div>
+      <div
+        className="perf-team-toggle"
+        role="group"
+        aria-label="비교 프로젝트·팀"
+      >
+        {groups.length > 1 && (
+          <button
+            aria-pressed={activeGroup === "all"}
+            onClick={() => setSelectedGroup("all")}
+          >
+            전체 <small>{people.length}명</small>
+          </button>
+        )}
+        {groups.map((g) => (
+          <button
+            key={g.project}
+            aria-pressed={activeGroup === g.project}
+            onClick={() => setSelectedGroup(g.project)}
+          >
+            {g.project}
+            <small>{g.people.length}명</small>
+          </button>
+        ))}
+        <span>토글은 아래 비교 영역에 적용됩니다.</span>
+      </div>
       <p className="perf-cohort-note">
         배정 기간 {from?.replaceAll("-", ".")} ~ {asOf?.replaceAll("-", ".")} ·
         이 기간에 배정된 업무를 종료일 현재 기준으로 집계합니다. 취소 제외 ·
         가상 자료의 배정일은 접수일과 같습니다. 상단 완료일 기준 요약과 집계
         대상이 다를 수 있습니다.
       </p>
-      {view === "matrix" ? (
-        <AssignmentMatrix groups={groups} people={people} onPerson={onPerson} />
+      {view === "combo" ? (
+        visiblePeople.length ? (
+          <PeopleAxisChart
+            key={activeGroup}
+            people={visiblePeople}
+            group={activeGroup === "all" ? "전체 그룹" : activeGroup}
+            onPerson={onPerson}
+          />
+        ) : (
+          <p className="work-empty">비교할 인원이 없습니다.</p>
+        )
+      ) : view === "matrix" ? (
+        <AssignmentMatrix
+          groups={visibleGroups}
+          people={visiblePeople}
+          onPerson={onPerson}
+        />
       ) : (
         <>
           {metric === "volume" ? (
@@ -305,9 +359,9 @@ export default function PeopleComparison({
           )}
           <div
             className="perf-comparison-groups"
-            style={{ "--comparison-groups": groups.length || 1 }}
+            style={{ "--comparison-groups": visibleGroups.length || 1 }}
           >
-            {groups.map((g) => (
+            {visibleGroups.map((g) => (
               <section
                 key={g.project}
                 className="perf-comparison-group"
@@ -388,7 +442,9 @@ export default function PeopleComparison({
         <p className="work-empty">선택 범위에 비교할 인원이 없습니다.</p>
       )}
       <p className="perf-comparison-footnote">
-        열마다 단위와 눈금이 다릅니다. 같은 열 안에서 비교하세요.
+        {view === "combo"
+          ? "가로축은 인원이며 왼쪽은 건수·일수, 오른쪽은 비율입니다. 같은 축과 지표 안에서 비교하세요."
+          : "열마다 단위와 눈금이 다릅니다. 같은 열 안에서 비교하세요."}
         완료율=완료/배정, 처리기간=완료한 업무의 배정→완료 중앙값(달력일·대기
         포함)입니다. 종합점수로 환산하지 않습니다.
         {people.some((p) => p.assignmentUnknown) &&

@@ -902,3 +902,214 @@
     padding: 9px;
   }
 }
+
+.perf-team-toggle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+.perf-team-toggle button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #c7ddeb;
+  border-radius: 7px;
+  background: #fff;
+  color: #315b79;
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.perf-team-toggle button[aria-pressed="true"] {
+  background: #0067ac;
+  border-color: #0067ac;
+  color: #fff;
+  box-shadow: 0 2px 5px #0067ac19;
+}
+.perf-team-toggle small {
+  font-size: 11px;
+  opacity: 0.9;
+}
+.perf-team-toggle > span {
+  margin-left: auto;
+  font-size: 11px;
+  color: #49677e;
+}
+.perf-axis-intro {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-bottom: 5px;
+}
+.perf-axis-intro h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #194e72;
+}
+.perf-axis-intro p {
+  margin: 0;
+  font-size: 11px;
+  color: #4b6980;
+  line-height: 1.7;
+}
+.perf-axis-scroll {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  border: 1px solid #d6e5ef;
+  border-radius: 8px;
+  background: #fff;
+}
+.perf-person-axis {
+  display: block;
+  font-family: inherit;
+}
+.perf-axis-title {
+  font-size: 14px;
+  font-weight: 700;
+  fill: #1a4c6e;
+}
+.perf-axis-legend {
+  font-size: 11px;
+  fill: #3e5f78;
+}
+.perf-axis-unit {
+  font-size: 10px;
+  fill: #466981;
+}
+.perf-axis-grid {
+  stroke: #dae6ef;
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+.perf-axis-tick {
+  font-size: 10px;
+  fill: #4f6e84;
+}
+.perf-assigned-bar {
+  fill: #b8d8ee;
+}
+.perf-completed-bar {
+  fill: #267eaf;
+}
+.perf-cycle-bar {
+  fill: #8178b3;
+}
+.perf-axis-count-label {
+  font-size: 11px;
+  fill: #315e7a;
+  font-weight: 650;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.perf-completion-line {
+  stroke: #078377;
+  stroke-width: 2.5;
+  fill: none;
+  pointer-events: none;
+}
+.perf-completion-point {
+  fill: #078377;
+  stroke: #fff;
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+.perf-on-time-line {
+  stroke: #245b90;
+  stroke-width: 2.5;
+  fill: none;
+  pointer-events: none;
+}
+.perf-on-time-point {
+  fill: #245b90;
+  stroke: #fff;
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+.perf-axis-rate-label {
+  font-size: 11px;
+  fill: #067567;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.perf-axis-deadline-label {
+  font-size: 11px;
+  fill: #1e537f;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 4px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.perf-axis-person-name {
+  font-size: 12px;
+  fill: #244f6d;
+  font-weight: 650;
+}
+.perf-axis-person-meta {
+  font-size: 10px;
+  fill: #4b6c82;
+}
+.perf-axis-person-meta.has-delay {
+  fill: #9f3743;
+}
+.perf-axis-no-data {
+  font-size: 10px;
+  fill: #5a7081;
+}
+.perf-axis-hit {
+  cursor: pointer;
+  outline: none;
+}
+.perf-axis-hit:focus-visible > rect {
+  stroke: #0067ac;
+  stroke-width: 2;
+}
+.perf-axis-scroll:focus-visible {
+  outline: 3px solid #0067ac;
+  outline-offset: 3px;
+}
+.perf-axis-readout {
+  display: flex;
+  align-items: center;
+  gap: 7px 16px;
+  flex-wrap: wrap;
+  min-height: 42px;
+  margin-top: 9px;
+  padding: 8px 12px;
+  background: #f1f7fc;
+  border: 1px solid #d7e6f1;
+  border-radius: 7px;
+  color: #315b78;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.perf-axis-readout > strong {
+  color: #005f9e;
+}
+@media (max-width: 750px) {
+  .perf-team-toggle button {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .perf-team-toggle > span {
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+  .perf-axis-readout {
+    font-size: 11px;
+    gap: 5px 10px;
+  }
+}

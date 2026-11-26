@@ -70,6 +70,104 @@ try {
     4,
   );
   await expect(page.locator(".perf-stages li")).toHaveCount(5);
+  await expect(page.getByLabel("인원 비교 방식")).toHaveValue("combo");
+  const toggles = page.getByRole("group", {
+    name: "비교 프로젝트·팀",
+    exact: true,
+  });
+  await expect(toggles.getByRole("button")).toHaveCount(4);
+  await expect(toggles.getByRole("button", { name: /^SFA/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  const sfaPeople = payload.participants.filter((p) => p.project === "SFA");
+  await expect(page.locator(".perf-axis-hit")).toHaveCount(sfaPeople.length);
+  const axisRows = selectRequests(payload, {
+    from: "2026-11-01",
+    to: payload.asOf,
+  });
+  for (const person of sfaPeople) {
+    const expected = assignmentMetrics(
+      axisRows.filter((r) => r.participantId === person.id),
+      "2026-11-01",
+      payload.asOf,
+    );
+    const hit = page.getByRole("button", {
+      name: `${person.name} 가로축 그래프 상세 보기`,
+      exact: true,
+    });
+    await expect(hit).toBeVisible();
+    const id = person.id;
+    await expect(page.locator(".perf-assigned-bar")).toHaveCount(
+      sfaPeople.length,
+    );
+    const plotted = await page
+      .locator(".perf-person-axis")
+      .evaluate((svg, pid) => {
+        const by = (cls) =>
+          [...svg.querySelectorAll(cls)].find((n) => n.dataset.personId === pid)
+            ?.dataset.value ?? "";
+        return {
+          assigned: by(".perf-assigned-bar"),
+          completed: by(".perf-completed-bar"),
+          rate: by(".perf-completion-point"),
+          time: by(".perf-cycle-bar"),
+          onTime: by(".perf-on-time-point"),
+        };
+      }, id);
+    assert.deepEqual(plotted, {
+      assigned: String(expected.assigned),
+      completed: String(expected.completed),
+      rate: String(expected.completionRate ?? ""),
+      time: String(expected.medianAssignedCycle ?? ""),
+      onTime: String(expected.onTimeRate ?? ""),
+    });
+  }
+  const xs = await page
+    .locator(".perf-assigned-bar")
+    .evaluateAll((nodes) => nodes.map((n) => Number(n.getAttribute("x"))));
+  assert.deepEqual(
+    xs,
+    [...xs].sort((a, b) => a - b),
+  );
+  await toggles.getByRole("button", { name: /^그룹웨어/ }).click();
+  await expect(page.locator(".perf-axis-hit")).toHaveCount(
+    payload.participants.filter((p) => p.project === "그룹웨어").length,
+  );
+  assert.ok(
+    (
+      await page
+        .locator(".perf-axis-hit")
+        .evaluateAll((nodes) => nodes.map((n) => n.dataset.personId))
+    ).every(
+      (id) =>
+        payload.participants.find((p) => p.id === id).project === "그룹웨어",
+    ),
+  );
+  await toggles.getByRole("button", { name: /^AO 개발팀/ }).click();
+  await expect(page.locator(".perf-axis-hit")).toHaveCount(4);
+  await page.getByLabel("수행 조회 종료일").fill("2026-11-22");
+  await page.getByLabel("수행 요청 유형").selectOption("요청 분석");
+  await expect(page.locator(".perf-completion-point")).toHaveCount(0);
+  await expect(page.locator(".perf-on-time-point")).toHaveCount(0);
+  await expect(page.locator(".perf-person-axis")).toContainText("표본 없음");
+  await page.getByLabel("수행 조회 종료일").fill(payload.asOf);
+  await page.getByLabel("수행 요청 유형").selectOption("전체");
+  await toggles.getByRole("button", { name: /^SFA/ }).click();
+  const firstAxis = page.getByRole("button", {
+    name: `${sfaPeople[0].name} 가로축 그래프 상세 보기`,
+    exact: true,
+  });
+  await firstAxis.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("dialog")).toContainText("배정기간 기준");
+  await page.keyboard.press("Escape");
+  await expect(firstAxis).toBeFocused();
+  await toggles.getByRole("button", { name: /^전체/ }).click();
+  await expect(page.locator(".perf-axis-hit")).toHaveCount(
+    payload.participants.length,
+  );
+  await page.getByLabel("인원 비교 방식").selectOption("matrix");
   await expect(page.getByLabel("인원 비교 방식")).toHaveValue("matrix");
   await expect(page.locator(".perf-matrix thead th")).toHaveCount(6);
   await expect(page.locator(".perf-matrix-person")).toHaveCount(
@@ -238,7 +336,8 @@ try {
   await page.getByLabel("수행 조회 종료일").fill(payload.asOf);
   await page.getByLabel("수행 프로젝트 필터").selectOption("전체");
 
-  await page.getByLabel("인원 비교 방식").selectOption("matrix");
+  await page.getByLabel("인원 비교 방식").selectOption("combo");
+  await toggles.getByRole("button", { name: /^SFA/ }).click();
 
   const metric = performanceMetrics(
     selectRequests(payload, { from: "2026-11-01", to: payload.asOf }),
@@ -398,8 +497,17 @@ try {
   await expect(
     page.getByLabel("수행 프로젝트 필터").locator("option"),
   ).toHaveCount(1);
-  await expect(page.locator(".perf-matrix tbody")).toHaveCount(1);
-  await expect(page.locator(".perf-matrix-group")).toContainText("SFA");
+  await expect(page.locator(".perf-axis-hit")).toHaveCount(
+    scoped.participants.length,
+  );
+  await expect(
+    page
+      .getByRole("group", { name: "비교 프로젝트·팀", exact: true })
+      .getByRole("button"),
+  ).toHaveCount(1);
+  await expect(
+    page.getByRole("group", { name: "비교 프로젝트·팀", exact: true }),
+  ).toContainText("SFA");
   await chooseDemoRole(page, "member", person.personId);
   await nav("나의 수행 현황");
   scoped = (await call("/api/performance")).data;
@@ -424,14 +532,14 @@ try {
       () => document.documentElement.scrollWidth <= innerWidth + 1,
     ),
   );
-  await expect(page.locator(".perf-matrix-scroll")).toBeVisible();
+  await expect(page.locator(".perf-axis-scroll")).toBeVisible();
   assert.ok(
     await page
-      .locator(".perf-matrix-scroll")
+      .locator(".perf-axis-scroll")
       .evaluate((e) => e.scrollWidth > e.clientWidth),
   );
   await page
-    .locator(".perf-matrix-scroll")
+    .locator(".perf-axis-scroll")
     .evaluate((e) => (e.scrollLeft = e.scrollWidth));
   assert.ok(
     await page.evaluate(
