@@ -1,0 +1,556 @@
+.performance-page {
+  min-width: 0;
+  color: #244b68;
+}
+.perf-header-actions,
+.perf-source,
+.perf-legend,
+.perf-list-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.perf-header-actions {
+  margin-left: auto;
+}
+.performance-page .work-title .work-mascot {
+  width: 80px;
+}
+.perf-source {
+  font-size: 12px;
+  color: #45657c;
+  line-height: 1.7;
+}
+.perf-source .text-link {
+  margin-left: auto;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.perf-notice {
+  margin: 0;
+  padding: 10px 14px;
+  background: #eaf7f2;
+  border: 1px solid #bee2d4;
+  border-radius: 8px;
+  color: #22634c;
+  font-size: 13px;
+}
+.perf-filter-card {
+  padding: 14px 18px;
+}
+.perf-filters {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+.perf-filters label,
+.perf-list-filters label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: #3e5c73;
+  min-width: 0;
+}
+.perf-filters :is(select, input),
+.perf-list-filters :is(select, input) {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #c8dce9;
+  border-radius: 6px;
+  padding: 9px;
+  background: #fff;
+  color: #244b68;
+  font: inherit;
+  font-size: 13px;
+}
+.perf-filter-card > p,
+.perf-table-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #45657c;
+}
+.perf-filter-card .perf-error {
+  color: #9c362a;
+}
+.performance-page .perf-stats {
+  gap: 12px;
+}
+.perf-stats .work-stat {
+  min-height: 145px;
+}
+.perf-stats .work-stat strong {
+  font-size: 28px;
+}
+.perf-stats .work-stat small {
+  line-height: 1.6;
+  font-size: 12px;
+}
+.perf-tabs {
+  display: flex;
+  gap: 7px;
+  border-bottom: 1px solid #d5e4ef;
+}
+.perf-tabs button {
+  background: transparent;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  padding: 11px 18px;
+  color: #446078;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+.perf-tabs button.active {
+  border-color: #0067ac;
+  color: #0067ac;
+}
+.perf-stages {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  gap: 12px;
+}
+.perf-stages li {
+  min-width: 0;
+}
+.perf-stages button {
+  display: grid;
+  width: 100%;
+  gap: 7px;
+  text-align: left;
+  border: 1px solid #cddfeb;
+  border-radius: 8px;
+  background: #f4f9fd;
+  color: #26516e;
+  padding: 14px;
+  font: inherit;
+  cursor: pointer;
+}
+.perf-stages button > span {
+  font-size: 11px;
+  color: #44718e;
+}
+.perf-stages button > strong {
+  font-size: 14px;
+}
+.perf-stages button > b {
+  font-size: 25px;
+  color: #0067ac;
+}
+.perf-stages button small {
+  font-size: 12px;
+  font-weight: 400;
+  margin-left: 3px;
+}
+.perf-stages li:last-child button {
+  background: #edf8f4;
+  border-color: #beded0;
+}
+.perf-charts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.perf-charts > .card {
+  min-width: 0;
+}
+.perf-duration-chart {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+.perf-duration-chart > div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 46px 34px;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+.perf-duration-chart > div > span {
+  color: #345b76;
+}
+.perf-duration-chart small {
+  color: #526c80;
+  text-align: right;
+}
+.perf-bar-track {
+  background: #e7f0f7;
+  border-radius: 4px;
+  height: 13px;
+  overflow: hidden;
+}
+.perf-bar-track i {
+  display: block;
+  height: 100%;
+  background: #438ab9;
+  border-radius: 4px;
+}
+.perf-duration-chart p,
+.perf-trend-chart p {
+  font-size: 11px;
+  line-height: 1.7;
+  margin: 3px 0;
+  color: #526b80;
+}
+.perf-trend-chart {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+.perf-legend {
+  font-size: 11px;
+  color: #217aaa;
+  gap: 12px;
+}
+.perf-legend .late {
+  color: #98620c;
+}
+.perf-legend .unknown {
+  color: #536878;
+}
+.perf-trend-row {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr) 35px;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+.perf-stacked,
+.perf-person-bar {
+  display: flex;
+  height: 15px;
+  background: #eef3f7;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.perf-stacked i,
+.perf-person-bar i {
+  display: block;
+  height: 100%;
+  background: #2a85b7;
+}
+.perf-stacked .late,
+.perf-person-bar .late {
+  background: #c98728;
+}
+.perf-stacked .unknown,
+.perf-person-bar .unknown {
+  background: #94a6b5;
+}
+.perf-requests table {
+  border-collapse: collapse;
+  width: 100%;
+  text-align: left;
+}
+.perf-requests :is(th, td) {
+  padding: 11px 9px;
+  border-bottom: 1px solid #dfebf3;
+  font-size: 13px;
+  vertical-align: top;
+}
+.perf-requests th {
+  background: #f4f8fc;
+  font-size: 12px;
+  color: #3f6079;
+  white-space: nowrap;
+}
+.perf-requests td:first-child {
+  min-width: 160px;
+}
+.perf-requests td > small {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: #4e6c81;
+}
+.perf-requests .btn {
+  padding: 6px 9px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.perf-secondary-metrics {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: #f4f8fc;
+  border: 1px solid #d9e7f0;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.perf-person-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.perf-person-card {
+  display: grid;
+  gap: 11px;
+  min-width: 0;
+  text-align: left;
+  padding: 16px;
+  border: 1px solid #cfdfeb;
+  border-radius: 8px;
+  background: #fff;
+  color: #355670;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.perf-person-card:hover {
+  background: #f4f9fd;
+  border-color: #75a7cb;
+}
+.perf-person-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+}
+.perf-person-heading strong {
+  font-size: 16px;
+  color: #174b70;
+}
+.perf-person-heading small {
+  background: #eaf5fc;
+  color: #196b9d;
+  padding: 4px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.perf-person-values {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.perf-person-values span {
+  display: grid;
+  gap: 5px;
+  font-size: 11px;
+}
+.perf-person-values b {
+  font-size: 17px;
+  color: #126797;
+}
+.perf-person-card > small {
+  font-size: 10px;
+  line-height: 1.6;
+}
+.perf-list-filters {
+  margin-bottom: 12px;
+}
+.perf-list-filters label:last-of-type {
+  flex: 1;
+  min-width: 150px;
+}
+.perf-list-filters > button {
+  align-self: end;
+  padding-bottom: 9px;
+}
+.perf-table-note {
+  margin-bottom: 14px;
+}
+.performance-dialog {
+  position: fixed;
+  inset: 0;
+  width: min(960px, calc(100vw - 32px));
+  max-width: none;
+  max-height: 88dvh;
+  padding: 0;
+  margin: auto;
+  overflow: auto;
+  border: 1px solid #c7ddeb;
+  border-radius: 12px;
+  background: #fff;
+  color: #294c68;
+  box-shadow: 0 20px 60px #0d345b33;
+}
+.performance-dialog::backdrop {
+  background: #173b5c66;
+}
+.performance-dialog > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 22px;
+  position: sticky;
+  top: 0;
+  background: #eff7fd;
+  border-bottom: 1px solid #d8e7f1;
+  z-index: 2;
+}
+.performance-dialog h2 {
+  font-size: 20px;
+  margin: 0;
+  color: #174b70;
+}
+.performance-dialog h3 {
+  font-size: 15px;
+  margin: 20px 0 12px;
+  color: #244f6d;
+}
+.performance-dialog-body {
+  padding: 20px;
+  min-width: 0;
+}
+.performance-dialog > footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 22px;
+  border-top: 1px solid #dbe8f1;
+  background: #fff;
+}
+.performance-dialog .perf-stats {
+  margin: 18px 0;
+}
+.performance-dialog .work-stat {
+  padding: 12px;
+}
+.performance-dialog .work-stat strong {
+  font-size: 23px;
+}
+.perf-definitions {
+  font-size: 14px;
+  line-height: 1.9;
+}
+.perf-definitions dt {
+  font-weight: 700;
+  color: #174b70;
+  margin-top: 14px;
+}
+.perf-definitions dd {
+  margin: 4px 0 0;
+}
+.perf-request-facts {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.perf-request-facts dt {
+  font-weight: 700;
+}
+.perf-request-facts dd {
+  margin: 0;
+}
+.perf-event-list {
+  padding: 0;
+  list-style: none;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+.perf-event-list li {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  border-left: 3px solid #7fadd0;
+  background: #f4f8fc;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+.perf-event-list small {
+  margin-left: auto;
+  color: #4b697e;
+}
+.performance-page :is(button, input, select):focus-visible,
+.performance-dialog :is(button, input, select):focus-visible {
+  outline: 3px solid #0067ac;
+  outline-offset: 3px;
+}
+@media (max-width: 1200px) {
+  .perf-filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .perf-person-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .perf-charts {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 750px) {
+  .performance-page .work-title .work-mascot {
+    display: none;
+  }
+  .perf-header-actions {
+    width: 100%;
+    margin: 0;
+  }
+  .perf-header-actions button {
+    flex: 1;
+    font-size: 12px;
+  }
+  .perf-source .text-link {
+    margin-left: 0;
+  }
+  .perf-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .perf-stages {
+    gap: 6px;
+  }
+  .perf-stages button {
+    padding: 9px 5px;
+    gap: 6px;
+  }
+  .perf-stages button > strong {
+    font-size: 11px;
+  }
+  .perf-stages button > b {
+    font-size: 20px;
+  }
+  .perf-person-grid {
+    grid-template-columns: 1fr;
+  }
+  .perf-tabs button {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  .perf-stats .work-stat {
+    min-height: 145px;
+    padding: 12px;
+  }
+  .perf-stats .work-stat strong {
+    font-size: 23px;
+  }
+  .perf-duration-chart > div {
+    grid-template-columns: 66px minmax(0, 1fr) 40px 27px;
+    gap: 5px;
+    font-size: 11px;
+  }
+  .perf-trend-row {
+    grid-template-columns: 86px minmax(0, 1fr) 30px;
+    gap: 5px;
+    font-size: 11px;
+  }
+  .performance-dialog-body {
+    padding: 14px;
+  }
+  .performance-dialog > header {
+    padding: 14px;
+  }
+  .performance-dialog h2 {
+    font-size: 17px;
+  }
+  .perf-request-facts {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  .perf-request-facts dd {
+    margin-bottom: 10px;
+  }
+  .perf-event-list small {
+    margin-left: 0;
+  }
+}

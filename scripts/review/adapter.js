@@ -1,3 +1,7 @@
+import {
+  getPerformance,
+  syncPerformance,
+} from "../../src/performance-service.js";
 // Browser-only implementation of the existing API contract. No API requests leave the HTML.
 import { analyzeMail } from "../../server/mail/analysis.js";
 import { demoMails } from "../../server/mail/fixtures.js";
@@ -394,6 +398,10 @@ export async function installDemoApi(
       return snapshot(actor);
     }
     if (!who) fail(401, "상단에서 시연 역할을 선택해 주세요.");
+    if (url.pathname === "/api/performance" && method === "GET")
+      return getPerformance(store, who);
+    if (url.pathname === "/api/performance/sync" && method === "POST")
+      return syncPerformance(store, who);
     if (url.pathname === "/api/state") {
       if (method === "PATCH") applyStatePatch(store, who, body.operations);
       return snapshot(who);

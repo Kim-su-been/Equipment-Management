@@ -1,3 +1,4 @@
+import { getPerformance, syncPerformance } from "../src/performance-service.js";
 import http from "node:http";
 import { randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
@@ -234,6 +235,17 @@ export function createApplication(config) {
             .prepare("DELETE FROM sessions WHERE token_hash=?")
             .run(digest(token));
         return json(res, 200, { ok: true }, { "Set-Cookie": cookie("", true) });
+      }
+      if (url.pathname === "/api/performance" && req.method === "GET") {
+        return json(res, 200, getPerformance(store, requireActor(req)));
+      }
+      if (url.pathname === "/api/performance/sync" && req.method === "POST") {
+        const actor = staff(req);
+        let result;
+        store.transaction(() => {
+          result = syncPerformance(store, actor);
+        });
+        return json(res, 200, result);
       }
       if (url.pathname === "/api/state" && req.method === "GET") {
         const actor = requireActor(req);

@@ -1,3 +1,4 @@
+import { scopePerformance } from "./performance-service.js";
 import { PROJECTS } from "./data.js";
 export function inScope(actor, person) {
   return actor.kind === "member"
@@ -10,6 +11,10 @@ export function viewState(store, actor) {
     ids = new Set(people.map((p) => p.id));
   return {
     ...state,
+    performance:
+      state.performance?.schema === 1
+        ? scopePerformance(state.performance, actor, state.people)
+        : null,
     referenceIssues:
       actor.kind === "member"
         ? []

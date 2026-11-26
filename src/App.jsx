@@ -1,6 +1,8 @@
+import PerformancePage from "./PerformancePage.jsx";
 import React, { useState, useEffect, useRef } from "react";
 import {
   LayoutDashboard,
+  BarChart3,
   Users,
   ClipboardList,
   GraduationCap,
@@ -120,6 +122,7 @@ import { reschedulePreparation } from "./personnel-workflow.js";
 
 const NAV = [
   ["dashboard", "전체 현황", LayoutDashboard],
+  ["performance", "퍼포먼스 관리", BarChart3],
   ["people", "인원 명단", Users],
   ["tasks", "준비 작업", ClipboardList],
   ["reviews", "교육·서류 검토", FileCheck2],
@@ -128,6 +131,7 @@ const NAV = [
 ];
 const MEMBER_NAV = [
   ["dashboard", "나의 투입 준비", LayoutDashboard],
+  ["performance", "나의 수행 현황", BarChart3],
   ["profile", "내 정보", UserRound],
   ["tasks", "나의 작업", ClipboardList],
   ["messages", "문의·변경 요청", MessageSquare],
@@ -2892,6 +2896,8 @@ export default function App({ initialState, actor, onLogout }) {
           {admin ? (
             page === "dashboard" ? (
               Dashboard()
+            ) : page === "performance" ? (
+              <PerformancePage actor={actor} scope={scope} />
             ) : page === "people" ? (
               People()
             ) : page === "tasks" ? (
@@ -2916,6 +2922,8 @@ export default function App({ initialState, actor, onLogout }) {
             )
           ) : page === "dashboard" ? (
             MemberHome()
+          ) : page === "performance" ? (
+            <PerformancePage actor={actor} scope={member.project} />
           ) : page === "profile" ? (
             MemberProfile()
           ) : page === "tasks" ? (

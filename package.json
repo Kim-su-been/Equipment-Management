@@ -21,7 +21,8 @@
     "build:vercel": "npm run build:offline",
     "test:deployment": "node tests/static-deployment.mjs",
     "test:work-ux": "node tests/work-ux.mjs",
-    "test:batch": "node tests/batch-task-exports.mjs"
+    "test:batch": "node tests/batch-task-exports.mjs",
+    "test:performance": "node tests/performance.mjs"
   },
   "dependencies": {
     "ajv": "^8.20.0",
