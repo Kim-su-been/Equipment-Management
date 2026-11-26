@@ -1,6 +1,11 @@
 import ExcelJS from "exceljs";
 import { SDLC_STAGES } from "./performance-data.js";
-import { personMetrics, stageDurations } from "./performance-metrics.js";
+import {
+  personMetrics,
+  stageDurations,
+  assignmentMetrics,
+  assignmentDate,
+} from "./performance-metrics.js";
 export async function exportPerformance(payload, rows, asOf, filter) {
   const workbook = new ExcelJS.Workbook();
   const names = new Map(payload.participants.map((p) => [p.id, p]));
@@ -28,6 +33,7 @@ export async function exportPerformance(payload, rows, asOf, filter) {
       "유형",
       "상태",
       "접수일",
+      "배정일",
       "약속 완료일",
       "실제 완료일",
       "지연 사유",
@@ -42,6 +48,7 @@ export async function exportPerformance(payload, rows, asOf, filter) {
       r.type,
       r.label,
       r.createdAt,
+      assignmentDate(r) || "미확인",
       r.dueDate || "미등록",
       r.done ? r.completedAt : "",
       r.waitReason,
@@ -77,6 +84,53 @@ export async function exportPerformance(payload, rows, asOf, filter) {
       p.reworked,
     ]),
   );
+  const compared = payload.participants.filter(
+    (p) =>
+      (!filter.project ||
+        filter.project === "전체" ||
+        p.project === filter.project) &&
+      (!filter.person || filter.person === "전체" || p.id === filter.person),
+  );
+  add(
+    "배정 기준 비교",
+    [
+      "프로젝트·업무",
+      "이름",
+      "소속",
+      "배정 건수",
+      "완료 건수",
+      "완료율(%)",
+      "배정→완료 중앙값(달력일)",
+      "납기 준수율(%)",
+      "납기 분모",
+      "기한 누락 제외",
+      "진행 지연",
+      "취소 제외",
+      "배정일 미확인 제외",
+    ],
+    compared.map((p) => {
+      const m = assignmentMetrics(
+        rows.filter((r) => r.participantId === p.id),
+        filter.from,
+        asOf,
+      );
+      return [
+        p.project,
+        p.name,
+        p.company,
+        m.assigned,
+        m.completed,
+        m.completionRate,
+        m.medianAssignedCycle,
+        m.onTimeRate,
+        m.eligible,
+        m.missingDue,
+        m.overdue,
+        m.cancelled,
+        m.assignmentUnknown,
+      ];
+    }),
+  );
   add(
     "단계 이력",
     ["요청 번호", "단계", "진입일"],
@@ -101,6 +155,14 @@ export async function exportPerformance(payload, rows, asOf, filter) {
         "조회 기간에 완료되고 약속 완료일이 있는 요청 중 기한 내 완료 비율",
       ],
       ["처리기간", "완료일 - 접수일, 달력일 중앙값"],
+      [
+        "배정 기준 비교",
+        "조회기간 내 배정된 업무만 사용. 취소 제외, 완료율=기준일 완료/배정. 처리기간=완료한 업무의 배정일→완료일 중앙값. 기존 인원별 지표 시트는 완료기간 기준이므로 구분한다.",
+      ],
+      [
+        "배정일 호환성",
+        "이전 가상 표본은 접수일을 배정일로 사용. 실제 자료는 배정일 미확인 시 제외하며 임의로 추정하지 않는다.",
+      ],
       [
         "단계별 기간",
         "완료 요청의 단계별 모든 방문 기간 합산 후 요청별 중앙값. 대기 시간 포함",

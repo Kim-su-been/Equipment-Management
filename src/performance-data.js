@@ -80,7 +80,13 @@ export function makePerformanceDemo(people = []) {
         wait: true,
       },
       { start: "2026-11-17", days: [0, 1, 3, 7], due: 14 },
-      { start: "2026-11-23", days: [0, 1], due: 7 },
+      {
+        start: "2026-11-23",
+        days: index % 3 === 0 ? [0, 1, 1, 2, 3] : [0, 1],
+        due: 7,
+        done: index % 3 === 0,
+        cancelled: index % 3 === 1,
+      },
       { start: "2026-11-01", days: [0], due: 4, cancelled: true },
       {
         start: shiftDay("2026-11-04", delta),
@@ -120,6 +126,7 @@ export function makePerformanceDemo(people = []) {
         title: titles[i],
         type: i === 1 ? "장애 수정" : i === 4 ? "요청 분석" : "기능 개선",
         createdAt: c.start,
+        assignedAt: c.start,
         dueDate: c.due === null ? null : shiftDay(c.start, c.due),
         completedAt: c.done ? events.at(-1).at : null,
         cancelledAt: c.cancelled ? shiftDay(c.start, 2) : null,

@@ -6,6 +6,7 @@ import { chooseDemoRole } from "./demo-controls.mjs";
 import {
   performanceMetrics,
   selectRequests,
+  assignmentMetrics,
 } from "../src/performance-metrics.js";
 const html = await readFile("preview/readyboard-offline.html");
 const browser = await chromium.launch({
@@ -69,6 +70,86 @@ try {
     4,
   );
   await expect(page.locator(".perf-stages li")).toHaveCount(5);
+  await expect(page.getByLabel("인원 비교 방식")).toHaveValue("matrix");
+  await expect(page.locator(".perf-matrix thead th")).toHaveCount(6);
+  await expect(page.locator(".perf-matrix-person")).toHaveCount(
+    payload.participants.length,
+  );
+  const assignedBaseline = selectRequests(payload, {
+    from: "2026-11-01",
+    to: payload.asOf,
+  });
+  for (const person of payload.participants) {
+    const expected = assignmentMetrics(
+      assignedBaseline.filter((r) => r.participantId === person.id),
+      "2026-11-01",
+      payload.asOf,
+    );
+    const row = page.locator(".perf-matrix-person").filter({
+      has: page.getByRole("button", {
+        name: `${person.name} 종합 비교 상세 보기`,
+        exact: true,
+      }),
+    });
+    for (const key of [
+      "assigned",
+      "completionRate",
+      "medianAssignedCycle",
+      "onTimeRate",
+      "overdue",
+    ])
+      await expect(row.locator(`[data-metric="${key}"]`)).toHaveAttribute(
+        "data-value",
+        String(expected[key] ?? ""),
+      );
+  }
+  const zeroLate = page
+    .locator(
+      '.perf-matrix-person td[data-metric="overdue"][data-value="0"] .perf-matrix-bar',
+    )
+    .first();
+  await expect(zeroLate).toHaveCSS("background-color", "rgb(225, 237, 245)");
+  assert.equal(
+    await zeroLate
+      .locator("i")
+      .evaluate((e) => e.getBoundingClientRect().width),
+    0,
+  );
+  const matrixPerson = payload.participants[0];
+  await page
+    .getByRole("button", {
+      name: `${matrixPerson.name} 종합 비교 상세 보기`,
+      exact: true,
+    })
+    .click();
+  await expect(page.getByRole("dialog")).toContainText("배정기간 기준");
+  const matrixExpected = assignmentMetrics(
+    assignedBaseline.filter((r) => r.participantId === matrixPerson.id),
+    "2026-11-01",
+    payload.asOf,
+  );
+  await expect(page.getByRole("dialog")).toContainText(
+    `배정 ${matrixExpected.assigned}건 중 완료 ${matrixExpected.completed}건`,
+  );
+  await page.keyboard.press("Escape");
+  await page.getByLabel("인원 비교 정렬").selectOption("high");
+  await page
+    .getByLabel("종합 비교 정렬 지표")
+    .selectOption("medianAssignedCycle");
+  for (const group of await page.locator(".perf-matrix tbody").all()) {
+    const values = await group
+      .locator('[data-metric="medianAssignedCycle"]')
+      .evaluateAll((nodes) =>
+        nodes
+          .filter((n) => n.dataset.value !== "")
+          .map((n) => Number(n.dataset.value)),
+      );
+    assert.deepEqual(
+      values,
+      [...values].sort((a, b) => b - a),
+    );
+  }
+  await page.getByLabel("인원 비교 방식").selectOption("chart");
   await expect(page.locator(".perf-comparison-groups")).toHaveCount(1);
   await expect(page.locator(".perf-comparison-group")).toHaveCount(3);
   await expect(page.locator(".perf-comparison-person")).toHaveCount(
@@ -143,6 +224,7 @@ try {
   await page.getByLabel("수행 프로젝트 필터").selectOption("AO 개발팀");
   await expect(page.locator(".perf-comparison-group")).toHaveCount(1);
   await expect(page.locator(".perf-comparison-person")).toHaveCount(4);
+  await page.getByLabel("수행 조회 종료일").fill("2026-11-22");
   await page.getByLabel("수행 요청 유형").selectOption("요청 분석");
   await expect(page.locator(".perf-comparison-person")).toHaveCount(4);
   await expect(page.locator(".perf-comparison-person").first()).toHaveAttribute(
@@ -153,7 +235,10 @@ try {
     "—",
   );
   await page.getByLabel("수행 요청 유형").selectOption("전체");
+  await page.getByLabel("수행 조회 종료일").fill(payload.asOf);
   await page.getByLabel("수행 프로젝트 필터").selectOption("전체");
+
+  await page.getByLabel("인원 비교 방식").selectOption("matrix");
 
   const metric = performanceMetrics(
     selectRequests(payload, { from: "2026-11-01", to: payload.asOf }),
@@ -239,7 +324,12 @@ try {
   await expect(
     page.getByRole("dialog", { name: "개인 지표 · 근거 업무", exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("dialog").locator("tbody tr")).toHaveCount(4);
+  await expect(page.getByRole("dialog").locator("tbody tr")).toHaveCount(
+    performanceMetrics(
+      selectRequests(payload).filter((r) => r.participantId === person.id),
+      payload.asOf,
+    ).completed,
+  );
   await page.keyboard.press("Escape");
   await page.getByLabel("수행 프로젝트 필터").selectOption("AO 개발팀");
   await expect(page.locator(".perf-person-card")).toHaveCount(4);
@@ -252,6 +342,16 @@ try {
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.readFile("artifacts/performance-ao.xlsx");
   assert.equal(wb.getWorksheet("업무 근거").rowCount, 33);
+  assert.equal(wb.getWorksheet("배정 기준 비교").rowCount, 5);
+  const aoFirst = payload.participants.find((p) => p.project === "AO 개발팀");
+  assert.equal(
+    wb.getWorksheet("배정 기준 비교").getCell("F2").value,
+    assignmentMetrics(
+      selectRequests(payload).filter((r) => r.participantId === aoFirst.id),
+      "2026-11-01",
+      payload.asOf,
+    ).completionRate,
+  );
   assert.ok(
     wb
       .getWorksheet("업무 근거")
@@ -298,10 +398,8 @@ try {
   await expect(
     page.getByLabel("수행 프로젝트 필터").locator("option"),
   ).toHaveCount(1);
-  await expect(page.locator(".perf-comparison-group")).toHaveCount(1);
-  await expect(page.locator(".perf-comparison-group > header")).toContainText(
-    "SFA",
-  );
+  await expect(page.locator(".perf-matrix tbody")).toHaveCount(1);
+  await expect(page.locator(".perf-matrix-group")).toContainText("SFA");
   await chooseDemoRole(page, "member", person.personId);
   await nav("나의 수행 현황");
   scoped = (await call("/api/performance")).data;
@@ -321,6 +419,20 @@ try {
   await page.mouse.move(380, 90);
   await page.evaluate(() => scrollTo(0, 0));
   await page.waitForTimeout(350);
+  assert.ok(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  );
+  await expect(page.locator(".perf-matrix-scroll")).toBeVisible();
+  assert.ok(
+    await page
+      .locator(".perf-matrix-scroll")
+      .evaluate((e) => e.scrollWidth > e.clientWidth),
+  );
+  await page
+    .locator(".perf-matrix-scroll")
+    .evaluate((e) => (e.scrollLeft = e.scrollWidth));
   assert.ok(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth + 1,

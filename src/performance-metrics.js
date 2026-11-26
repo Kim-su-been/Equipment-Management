@@ -159,3 +159,34 @@ export function personMetrics(payload, rows, asOf) {
     }))
     .filter((p) => p.completed || p.ongoing || p.cancelled);
 }
+
+// One assignment cohort is used for every column in the simultaneous comparison.
+export function assignmentDate(request) {
+  if (validDay(request.assignedAt)) return request.assignedAt;
+  // Older synthetic snapshots explicitly model receipt and assignment as one date.
+  return request.demo === true && validDay(request.createdAt)
+    ? request.createdAt
+    : null;
+}
+export function assignmentCohort(rows, from, to) {
+  return rows.filter((r) => {
+    const date = assignmentDate(r);
+    return date && (!from || date >= from) && date <= to;
+  });
+}
+export function assignmentMetrics(rows, from, to) {
+  const cohort = assignmentCohort(rows, from, to),
+    metrics = performanceMetrics(cohort, to);
+  const assigned = metrics.completed + metrics.ongoing;
+  const times = cohort
+    .filter((r) => r.done && !r.cancelled)
+    .map((r) => daysBetween(assignmentDate(r), r.completedAt))
+    .filter((n) => n !== null && n >= 0);
+  return {
+    ...metrics,
+    assigned,
+    completionRate: ratio(metrics.completed, assigned),
+    medianAssignedCycle: median(times),
+    assignmentUnknown: rows.filter((r) => !assignmentDate(r)).length,
+  };
+}

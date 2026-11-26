@@ -755,3 +755,150 @@
     gap: 7px;
   }
 }
+
+.perf-cohort-note {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  background: #f1f7fc;
+  border: 1px solid #d9e7f1;
+  border-radius: 7px;
+  color: #365a75;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.perf-matrix-scroll {
+  max-height: 520px;
+  overflow: auto;
+  width: 100%;
+  border: 1px solid #cddfeb;
+  border-radius: 8px;
+  scrollbar-width: thin;
+}
+.perf-matrix {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  min-width: 820px;
+  text-align: left;
+  table-layout: fixed;
+}
+.perf-matrix caption {
+  caption-side: bottom;
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: #44647d;
+  background: #f6fafe;
+}
+.perf-matrix thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 11px 12px;
+  background: #eaf4fc;
+  border-bottom: 1px solid #c9deed;
+  font-size: 13px;
+  color: #174b70;
+}
+.perf-matrix th:first-child {
+  width: 160px;
+}
+.perf-matrix thead th:first-child {
+  left: 0;
+  z-index: 4;
+}
+.perf-matrix :is(td, th) > small {
+  display: block;
+  font-weight: 400;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #49677e;
+  margin-top: 4px;
+}
+.perf-matrix .perf-matrix-group th {
+  padding: 7px 12px;
+  width: auto;
+  background: #f1f7fb;
+  border-bottom: 1px solid #d9e8f1;
+  color: #285574;
+  font-size: 12px;
+}
+.perf-matrix-group span {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 400;
+}
+.perf-matrix-person > th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #fff;
+}
+.perf-matrix-person > :is(td, th) {
+  padding: 9px 12px;
+  border-bottom: 1px solid #e0eaf2;
+  vertical-align: top;
+}
+.perf-matrix-person:hover > :is(td, th) {
+  background: #f4f9fd;
+}
+.perf-matrix-person .text-link {
+  font-size: 13px;
+  text-align: left;
+}
+.perf-matrix-person td > b {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: #145c8b;
+}
+.perf-matrix-person td[data-metric="overdue"]:not([data-value="0"]) > b {
+  color: #a33e46;
+}
+.perf-matrix-bar {
+  display: block;
+  height: 6px;
+  background: #e1edf5;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 7px 0 5px;
+}
+.perf-matrix-bar > i {
+  display: block;
+  height: 100%;
+  background: #2d83b4;
+}
+.perf-matrix-person td[data-metric="completionRate"] .perf-matrix-bar > i {
+  background: #098477;
+}
+.perf-matrix-person td[data-metric="medianAssignedCycle"] .perf-matrix-bar > i {
+  background: #7371a4;
+}
+.perf-matrix-person td[data-metric="overdue"] .perf-matrix-bar > i {
+  background: #bd555b;
+}
+.perf-matrix-scroll:focus-visible {
+  outline: 3px solid #0067ac;
+  outline-offset: 3px;
+}
+@media (max-width: 750px) {
+  .perf-matrix-scroll {
+    max-height: 480px;
+  }
+  .perf-matrix th:first-child {
+    width: 130px;
+  }
+  .perf-matrix {
+    min-width: 850px;
+  }
+  .perf-comparison-controls {
+    gap: 8px;
+  }
+  .perf-comparison-controls label {
+    flex-basis: calc(50% - 8px);
+  }
+  .perf-matrix-person > :is(td, th) {
+    padding: 9px;
+  }
+}

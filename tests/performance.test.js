@@ -17,6 +17,8 @@ import {
   requestAt,
   weeklyTrend,
   validDay,
+  assignmentMetrics,
+  assignmentDate,
 } from "../src/performance-metrics.js";
 import { getPerformance, syncPerformance } from "../src/performance-service.js";
 import { viewState } from "../src/actor-scope.js";
@@ -67,6 +69,19 @@ test("synthetic source has stable IDs, valid event chronology, AO and existing p
       ),
     );
   }
+  const assignedRows = selectRequests(source);
+  const rates = source.participants.map(
+    (p) =>
+      assignmentMetrics(
+        assignedRows.filter((r) => r.participantId === p.id),
+        "2026-11-01",
+        source.asOf,
+      ).completionRate,
+  );
+  assert.ok(
+    new Set(rates).size > 1,
+    "demo completion rates must vary between people",
+  );
   const reordered = makePerformanceDemo([...data.people].reverse());
   assert.deepEqual(
     [...source.requests].sort((a, b) => a.id.localeCompare(b.id)),
@@ -226,7 +241,7 @@ test("Excel export includes only filtered request evidence, people and real metr
     blob = await exportPerformance(payload, rows, payload.asOf, filter),
     book = new ExcelJS.Workbook();
   await book.xlsx.load(await blob.arrayBuffer());
-  assert.equal(book.worksheets.length, 4);
+  assert.equal(book.worksheets.length, 5);
   assert.equal(book.getWorksheet("업무 근거").rowCount, rows.length + 1);
   assert.ok(
     book
@@ -236,6 +251,19 @@ test("Excel export includes only filtered request evidence, people and real metr
       .every((p) => p === "AO 개발팀"),
   );
   assert.equal(book.getWorksheet("인원별 지표").rowCount, 5);
+  const matrix = book.getWorksheet("배정 기준 비교");
+  assert.equal(matrix.rowCount, 5);
+  const firstPerson = payload.participants.find(
+    (p) => p.project === "AO 개발팀",
+  );
+  const expected = assignmentMetrics(
+    rows.filter((r) => r.participantId === firstPerson.id),
+    filter.from,
+    payload.asOf,
+  );
+  assert.equal(matrix.getCell("D2").value, expected.assigned);
+  assert.equal(matrix.getCell("E2").value, expected.completed);
+  assert.equal(matrix.getCell("F2").value, expected.completionRate);
 });
 test("server endpoint persists synthetic data across sessions and never exposes another project or allows member sync", async (t) => {
   const dir = await mkdtemp(path.join(os.tmpdir(), "readyboard-performance-"));
@@ -294,4 +322,65 @@ test("server endpoint persists synthetic data across sessions and never exposes 
   assert.ok(
     state.state.performance.participants.every((p) => p.project === "SFA"),
   );
+});
+
+test("assignment comparison uses one cohort, excludes carry-over/cancellation/unknown dates and measures assignment-to-completion", () => {
+  const common = {
+    participantId: "p",
+    project: "SFA",
+    createdAt: "2026-10-28",
+    events: [{ stage: "request", at: "2026-10-28" }],
+  };
+  const requests = [
+    {
+      ...common,
+      id: "done",
+      assignedAt: "2026-11-01",
+      completedAt: "2026-11-04",
+      dueDate: "2026-11-05",
+    },
+    { ...common, id: "open", assignedAt: "2026-11-03", dueDate: "2026-11-09" },
+    {
+      ...common,
+      id: "carry",
+      assignedAt: "2026-10-31",
+      completedAt: "2026-11-03",
+      dueDate: "2026-11-05",
+    },
+    {
+      ...common,
+      id: "cancelled",
+      assignedAt: "2026-11-02",
+      cancelledAt: "2026-11-03",
+    },
+    { ...common, id: "future", assignedAt: "2026-11-15" },
+    { ...common, id: "unknown", createdAt: "2026-11-01", demo: false },
+    {
+      ...common,
+      id: "legacy-mock",
+      createdAt: "2026-11-02",
+      completedAt: "2026-11-03",
+      dueDate: "2026-11-04",
+      demo: true,
+    },
+  ].map((r) => requestAt(r, "2026-11-10"));
+  const m = assignmentMetrics(requests, "2026-11-01", "2026-11-10");
+  assert.equal(m.assigned, 3);
+  assert.equal(m.completed, 2);
+  assert.equal(m.completionRate, 66.7);
+  assert.equal(m.medianAssignedCycle, 2);
+  assert.equal(m.ongoing, 1);
+  assert.equal(m.overdue, 1);
+  assert.equal(m.cancelled, 1);
+  assert.equal(m.assignmentUnknown, 1);
+  assert.equal(m.onTimeRate, 100);
+  assert.equal(assignmentDate(requests.find((r) => r.id === "unknown")), null);
+  assert.equal(
+    assignmentDate(requests.find((r) => r.id === "legacy-mock")),
+    "2026-11-02",
+  );
+  const early = assignmentMetrics(requests, "2026-11-11", "2026-11-14");
+  assert.equal(early.assigned, 0);
+  assert.equal(early.completionRate, null);
+  assert.equal(early.medianAssignedCycle, null);
 });

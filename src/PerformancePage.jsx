@@ -19,6 +19,8 @@ import {
   weeklyTrend,
   personMetrics,
   daysBetween,
+  assignmentCohort,
+  assignmentMetrics,
 } from "./performance-metrics.js";
 import { exportPerformance } from "./performance-export.js";
 import "./performance.css";
@@ -67,7 +69,7 @@ function PerfDialog({ title, onClose, children }) {
     </dialog>
   );
 }
-function StatCards({ metrics, onSelect }) {
+function StatCards({ metrics, onSelect, basis }) {
   const cards = [
     [
       "completed",
@@ -91,7 +93,9 @@ function StatCards({ metrics, onSelect }) {
       "cycle",
       "처리기간 중앙값",
       days(metrics.medianCycle),
-      "접수 → 완료 · 달력일 기준",
+      basis === "assigned"
+        ? "배정 → 완료 · 달력일 기준"
+        : "접수 → 완료 · 달력일 기준",
     ],
   ];
   return (
@@ -382,9 +386,16 @@ export default function PerformancePage({ actor, scope }) {
     detail?.type === "person"
       ? payload.participants.find((p) => p.id === detail.id)
       : null;
+  const detailRows =
+    detail?.basis === "assigned"
+      ? assignmentCohort(rows, filter.from, asOf)
+      : rows;
   const personRows = selectedPerson
-    ? rows.filter((r) => r.participantId === selectedPerson.id)
+    ? detailRows.filter((r) => r.participantId === selectedPerson.id)
     : [];
+  const personalAssigned = selectedPerson
+    ? assignmentMetrics(personRows, filter.from, asOf)
+    : null;
   return (
     <div className="work-page performance-page">
       <header className="work-title">
@@ -547,8 +558,11 @@ export default function PerformancePage({ actor, scope }) {
                     )
               }
               rows={rows}
+              from={filter.from}
               asOf={asOf}
-              onPerson={(id) => setDetail({ type: "person", id })}
+              onPerson={(id) =>
+                setDetail({ type: "person", id, basis: "assigned" })
+              }
             />
           )}
           <section className="card work-card">
@@ -846,12 +860,32 @@ export default function PerformancePage({ actor, scope }) {
                   ? "기존 인원 고유 기록에 연결"
                   : "AO 가상 인원"}
               </p>
+              {detail.basis === "assigned" && (
+                <p className="perf-cohort-note">
+                  배정기간 기준 · 배정 {personalAssigned.assigned}건 중 완료{" "}
+                  {personalAssigned.completed}건 · 완료율{" "}
+                  {personalAssigned.completionRate === null
+                    ? "—"
+                    : `${personalAssigned.completionRate}%`}{" "}
+                  · 배정→완료 중앙값{" "}
+                  {days(personalAssigned.medianAssignedCycle)}
+                </p>
+              )}
               <StatCards
-                metrics={performanceMetrics(personRows, asOf)}
+                basis={detail.basis}
+                metrics={
+                  detail.basis === "assigned"
+                    ? {
+                        ...personalAssigned,
+                        medianCycle: personalAssigned.medianAssignedCycle,
+                      }
+                    : performanceMetrics(personRows, asOf)
+                }
                 onSelect={(id) =>
                   setDetail({
                     type: "personEvidence",
                     id: selectedPerson.id,
+                    basis: detail.basis,
                     metric: id,
                   })
                 }
@@ -870,12 +904,18 @@ export default function PerformancePage({ actor, scope }) {
             <>
               <button
                 className="text-link"
-                onClick={() => setDetail({ type: "person", id: detail.id })}
+                onClick={() =>
+                  setDetail({
+                    type: "person",
+                    id: detail.id,
+                    basis: detail.basis,
+                  })
+                }
               >
                 ← 개인 지표로
               </button>
               <RequestList
-                rows={rows.filter(
+                rows={detailRows.filter(
                   (r) =>
                     r.participantId === detail.id &&
                     matchStatus(
