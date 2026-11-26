@@ -1,3 +1,4 @@
+import PeopleComparison from "./PeopleComparison.jsx";
 import React, { useEffect, useRef, useState } from "react";
 import {
   BarChart3,
@@ -29,11 +30,13 @@ function PerfDialog({ title, onClose, children }) {
   useEffect(() => {
     const dialog = ref.current;
     const previous = document.body.style.overflow;
+    const trigger = document.activeElement;
     dialog.showModal();
     document.body.style.overflow = "hidden";
     return () => {
       dialog.close();
       document.body.style.overflow = previous;
+      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
     };
   }, []);
   return (
@@ -534,6 +537,20 @@ export default function PerformancePage({ actor, scope }) {
       </nav>
       {tab === "overview" && (
         <>
+          {admin && (
+            <PeopleComparison
+              participants={
+                rangeError
+                  ? []
+                  : options.filter(
+                      (p) => filter.person === "전체" || p.id === filter.person,
+                    )
+              }
+              rows={rows}
+              asOf={asOf}
+              onPerson={(id) => setDetail({ type: "person", id })}
+            />
+          )}
           <section className="card work-card">
             <div className="work-card-heading">
               <div>

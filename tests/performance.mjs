@@ -69,6 +69,92 @@ try {
     4,
   );
   await expect(page.locator(".perf-stages li")).toHaveCount(5);
+  await expect(page.locator(".perf-comparison-groups")).toHaveCount(1);
+  await expect(page.locator(".perf-comparison-group")).toHaveCount(3);
+  await expect(page.locator(".perf-comparison-person")).toHaveCount(
+    payload.participants.length,
+  );
+  await expect(page.getByLabel("인원 비교 지표")).toHaveValue("punctuality");
+  const baselineRows = selectRequests(payload, {
+    from: "2026-11-01",
+    to: payload.asOf,
+  });
+  for (const person of payload.participants) {
+    const expected = performanceMetrics(
+      baselineRows.filter((r) => r.participantId === person.id),
+      payload.asOf,
+    );
+    const button = page.getByRole("button", {
+      name: `${person.name} 비교 그래프 상세 보기`,
+      exact: true,
+    });
+    await expect(button).toHaveAttribute(
+      "data-value",
+      String(expected.onTimeRate ?? ""),
+    );
+  }
+  await page.getByLabel("인원 비교 지표").selectOption("volume");
+  const total = await page
+    .locator(".perf-comparison-person")
+    .first()
+    .getAttribute("data-value");
+  assert.ok(Number(total) > 0);
+  await expect(page.locator(".perf-comparison-legend")).toContainText(
+    "진행 지연",
+  );
+  for (const metricName of ["overdue", "cycle", "rework", "punctuality"]) {
+    await page.getByLabel("인원 비교 지표").selectOption(metricName);
+    await expect(page.locator(".perf-comparison-group")).toHaveCount(3);
+  }
+  await page.getByLabel("인원 비교 정렬").selectOption("high");
+  for (const group of await page.locator(".perf-comparison-group").all()) {
+    const values = (
+      await group
+        .locator(".perf-comparison-person")
+        .evaluateAll((nodes) => nodes.map((n) => n.dataset.value))
+    )
+      .filter((v) => v !== "")
+      .map(Number);
+    assert.deepEqual(
+      values,
+      [...values].sort((a, b) => b - a),
+    );
+  }
+  const comparisonPerson = payload.participants[0];
+  await page
+    .getByRole("button", {
+      name: `${comparisonPerson.name} 비교 그래프 상세 보기`,
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole("dialog", {
+      name: `${comparisonPerson.name} · 수행 지표`,
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("button", {
+      name: `${comparisonPerson.name} 비교 그래프 상세 보기`,
+      exact: true,
+    }),
+  ).toBeFocused();
+  await page.getByLabel("수행 프로젝트 필터").selectOption("AO 개발팀");
+  await expect(page.locator(".perf-comparison-group")).toHaveCount(1);
+  await expect(page.locator(".perf-comparison-person")).toHaveCount(4);
+  await page.getByLabel("수행 요청 유형").selectOption("요청 분석");
+  await expect(page.locator(".perf-comparison-person")).toHaveCount(4);
+  await expect(page.locator(".perf-comparison-person").first()).toHaveAttribute(
+    "data-value",
+    "",
+  );
+  await expect(page.locator(".perf-comparison-person").first()).toContainText(
+    "—",
+  );
+  await page.getByLabel("수행 요청 유형").selectOption("전체");
+  await page.getByLabel("수행 프로젝트 필터").selectOption("전체");
+
   const metric = performanceMetrics(
     selectRequests(payload, { from: "2026-11-01", to: payload.asOf }),
     payload.asOf,
@@ -212,11 +298,16 @@ try {
   await expect(
     page.getByLabel("수행 프로젝트 필터").locator("option"),
   ).toHaveCount(1);
+  await expect(page.locator(".perf-comparison-group")).toHaveCount(1);
+  await expect(page.locator(".perf-comparison-group > header")).toContainText(
+    "SFA",
+  );
   await chooseDemoRole(page, "member", person.personId);
   await nav("나의 수행 현황");
   scoped = (await call("/api/performance")).data;
   assert.equal(scoped.participants.length, 1);
   assert.equal(scoped.participants[0].personId, person.personId);
+  await expect(page.locator(".perf-comparison")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "가상 자료 불러오기", exact: true }),
   ).toHaveCount(0);
