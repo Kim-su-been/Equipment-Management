@@ -55,6 +55,7 @@ try {
   }
   for (const name of [
     "brand/tongyang-family.png",
+    "brand/tongyang-ci.svg",
     "brand/tongyang-gelodi.png",
     "forms/security-pledge.png",
     "forms/security-pledge.pdf",

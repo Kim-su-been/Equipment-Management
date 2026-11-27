@@ -2640,9 +2640,17 @@ export default function App({ initialState, actor, onLogout }) {
             R<span />
           </span>
           <span className="brand-wordmark">
-            레디보드<small>수호천사 동양생명 · READYBOARD</small>
+            레디보드<small>READYBOARD · PEOPLE</small>
           </span>
         </button>
+        <div className="tongyang-ci">
+          <img
+            src="/brand/tongyang-ci.svg"
+            alt="수호천사동양생명"
+            width="166"
+            height="25"
+          />
+        </div>
         <div className="workspace-label">
           WORKSPACE<span>PROTOTYPE</span>
         </div>

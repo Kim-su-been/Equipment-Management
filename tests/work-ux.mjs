@@ -148,13 +148,13 @@ try {
     await page
       .locator(".sidebar")
       .evaluate((e) => getComputedStyle(e).backgroundColor),
-    "rgb(255, 255, 255)",
+    "rgb(75, 83, 90)",
   );
   assert.equal(
     await page
       .locator(".topbar")
       .evaluate((e) => getComputedStyle(e).backgroundColor),
-    "rgb(255, 255, 255)",
+    "rgb(95, 151, 200)",
   );
   await expect(page.locator(".app-shell")).toHaveAttribute(
     "data-brand",
@@ -182,6 +182,14 @@ try {
   assert.ok(
     await page
       .locator(".dashboard-work .work-mascot img")
+      .evaluate((e) => e.complete && e.naturalWidth > 0),
+  );
+  await expect(
+    page.getByAltText("수호천사동양생명", { exact: true }),
+  ).toBeVisible();
+  assert.ok(
+    await page
+      .locator(".tongyang-ci img")
       .evaluate((e) => e.complete && e.naturalWidth > 0),
   );
   const initial = await state(),

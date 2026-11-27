@@ -36,35 +36,56 @@ h2,
 h3 {
   color: #242c34;
 }
+/* Separate navigation chrome from the white working surfaces. */
 .app-shell > .sidebar {
-  background: #fff;
-  border-right-color: #dce3e9;
-  color: #354550;
+  background: #4b535a;
+  border-right-color: #414950;
+  color: #fff;
+  scrollbar-color: #98a6b2 #4b535a;
 }
 .app-shell .sidebar .brand > span.brand-wordmark {
-  color: #2b679b;
+  color: #fff;
   -webkit-text-fill-color: currentColor;
 }
 .app-shell .sidebar .brand-wordmark small {
-  color: #4a687e;
+  color: #e2eaf0;
   -webkit-text-fill-color: currentColor;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.7px;
   font-size: 9px;
   line-height: 1.6;
 }
+.tongyang-ci {
+  width: 166px;
+  max-width: calc(100% - 32px);
+  height: 33px;
+  margin: 4px 16px 17px;
+  padding: 5px 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d8e5ef;
+  border-radius: 7px;
+  background: #f5f8fb;
+}
+.tongyang-ci img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
 .app-shell .sidebar .nav-label,
 .app-shell .sidebar .workspace-label {
-  color: #526573;
+  color: #dbe6ef;
   -webkit-text-fill-color: currentColor;
 }
 .app-shell .sidebar .workspace-label > span {
-  color: #2b679b;
-  border-color: #c3d8e9;
-  background: #f1f7fc;
+  color: #e3eff9;
+  border-color: #8198ab;
+  background: #414c56;
 }
 .app-shell .sidebar .brand-mark {
-  background: #5f97c8;
-  color: #fff;
+  background: #edf5fc;
+  color: #2b679b;
   border-radius: 12px;
   box-shadow: none;
 }
@@ -72,55 +93,53 @@ h3 {
   background: #ecd58a;
 }
 .app-shell .sidebar .workspace-icon {
-  background: #fff;
+  background: #eaf3fb;
   color: #2b679b;
 }
 .app-shell .sidebar .workspace-switch {
-  background: #f4f7fa;
-  border-color: #d5e1eb;
-  color: #2f4b60;
+  background: #596671;
+  border-color: #8194a3;
+  color: #fff;
   box-shadow: none;
 }
 .app-shell .sidebar .workspace-switch > span,
 .app-shell .sidebar .workspace-switch strong,
 .app-shell .sidebar .workspace-switch svg:last-child {
-  color: #2d4e66;
+  color: #fff;
 }
 .app-shell .sidebar .workspace-switch small {
-  color: #536b7d;
+  color: #e3ecf3;
 }
 .app-shell .sidebar .nav-item {
-  color: #445765;
+  color: #f0f5f9;
 }
 .app-shell .sidebar .nav-item.active {
   color: #235f92;
   background: #eaf3fb;
-  border: 1px solid #c7dff0;
+  border: 1px solid #d5e8f6;
   box-shadow: none;
 }
 .app-shell .sidebar .nav-item.active > i {
-  background: #5f97c8;
+  background: #2b679b;
 }
 .app-shell .sidebar .nav-item:not(.active):hover {
-  background: #f1f6fa;
-  color: #245f92;
+  background: #606f7b;
+  color: #fff;
 }
 .app-shell .sidebar .nav-divider {
-  background: #e2e7ed;
-  border-color: #e2e7ed;
+  background: #768591;
+  border-color: #768591;
 }
 .app-shell .sidebar .sidebar-help,
 .app-shell .sidebar .sidebar-user span {
-  color: #4a6274;
+  color: #e2ebf2;
 }
 .app-shell .sidebar .sidebar-user {
-  border-color: #e0e6ec;
+  border-color: #768591;
 }
-.app-shell .sidebar .sidebar-user strong {
-  color: #263b4a;
-}
+.app-shell .sidebar .sidebar-user strong,
 .app-shell .sidebar .sidebar-user .icon-btn {
-  color: #4f6e84;
+  color: #fff;
 }
 .app-shell .sidebar .user-avatar {
   background: #eaf3fb;
@@ -131,8 +150,12 @@ h3 {
   color: #2b679b;
   border-color: #c9deef;
 }
+.app-shell .sidebar .assistant-entry:hover {
+  background: #dbeaf6;
+  color: #21547f;
+}
 .app-shell .sidebar .member-subnav {
-  border-left-color: #cfdfeb;
+  border-left-color: #8c9caa;
 }
 .app-shell .sidebar .member-subnav .nav-item.active {
   background: #edf5fc;
@@ -140,9 +163,9 @@ h3 {
   color: #245f92;
 }
 .app-shell .topbar {
-  background: #fff;
-  border-bottom-color: #dce3e9;
-  color: #354550;
+  background: #5f97c8;
+  border-bottom-color: #5087b7;
+  color: #142b3d;
 }
 .app-shell .topbar .breadcrumb,
 .app-shell .topbar .breadcrumb strong,
@@ -150,40 +173,50 @@ h3 {
 .app-shell .topbar .breadcrumb > svg,
 .app-shell .topbar .icon-btn,
 .app-shell .topbar .scope-selector select {
-  color: #334d61;
+  color: #142b3d;
 }
 .app-shell .topbar .scope-selector select {
-  background: #fff;
+  background: #dcecf8;
 }
 .topbar .mode-switch {
-  background: #f1f6fa !important;
-  border-color: #d4e1eb !important;
+  background: #eaf3fb !important;
+  border-color: #e0edf8 !important;
 }
 .topbar .mode-switch button,
 .topbar .mode-switch > span {
-  color: #2b5b7c !important;
+  color: #244e6d !important;
 }
 .topbar .mode-switch button.selected {
-  background: #e3f0fa !important;
+  background: #fff !important;
   color: #245f92 !important;
 }
 .topbar .header-divider {
-  background: #d9e3eb;
+  background: #2e638f;
 }
 .app-shell .topbar .scope-dot {
-  background: #5f97c8;
+  background: #173f5f;
 }
 .app-shell .topbar .top-avatar {
   background: #eaf3fb;
   color: #2b679b;
 }
-.app-shell .sidebar :is(button, a):focus-visible,
+.app-shell .topbar .demo-mode-badge {
+  background: #edf5fc;
+  color: #244e6d;
+  border-color: #e0edf8;
+}
+.app-shell .sidebar :is(button, a):focus-visible {
+  outline-color: #fff;
+  box-shadow: 0 0 0 1px #2b679b;
+}
 .app-shell .topbar :is(button, a, select):focus-visible {
-  outline-color: #2b679b;
+  outline-color: #142b3d;
   box-shadow: 0 0 0 1px #fff;
 }
-.app-shell > .sidebar {
-  scrollbar-color: #b1c8da #fff;
+.app-shell .topbar .icon-btn:hover,
+.app-shell .sidebar .sidebar-user .icon-btn:hover {
+  background: #edf5fc;
+  color: #245f92;
 }
 .card,
 .work-card {
