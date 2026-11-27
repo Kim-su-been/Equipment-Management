@@ -148,14 +148,33 @@ try {
     await page
       .locator(".sidebar")
       .evaluate((e) => getComputedStyle(e).backgroundColor),
-    "rgb(7, 85, 138)",
+    "rgb(255, 255, 255)",
   );
   assert.equal(
     await page
       .locator(".topbar")
       .evaluate((e) => getComputedStyle(e).backgroundColor),
-    "rgb(0, 103, 172)",
+    "rgb(255, 255, 255)",
   );
+  await expect(page.locator(".app-shell")).toHaveAttribute(
+    "data-brand",
+    "tongyang",
+  );
+  assert.equal(
+    await page.evaluate(() =>
+      getComputedStyle(document.documentElement)
+        .getPropertyValue("--guardian-blue")
+        .trim(),
+    ),
+    "#5f97c8",
+  );
+  await expect(page.locator(".dashboard-work .work-mascot")).toHaveAttribute(
+    "data-character",
+    "guardian-family",
+  );
+  await expect(
+    page.locator(".assistant-entry .brand-characters"),
+  ).toHaveAttribute("data-character", "gelodi");
   await expect(
     page.locator(".dashboard-work .work-mascot.cast-group img"),
   ).toBeVisible();

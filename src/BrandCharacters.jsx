@@ -1,4 +1,4 @@
-/** A presentation asset prepared from the user's supplied mascot reference. */
+/** Tongyang guardian characters prepared from the user-provided reference captures. */
 export default function BrandCharacters({
   focus = "group",
   className = "",
@@ -7,13 +7,14 @@ export default function BrandCharacters({
   return (
     <span
       className={`brand-characters ${focus === "group" ? "cast-group" : `cast-character cast-${focus}`} ${className}`}
+      data-character={focus === "guide" ? "gelodi" : "guardian-family"}
       aria-hidden={label ? undefined : true}
     >
       <img
         src={
           focus === "guide"
-            ? "/brand/woori-guide.png"
-            : "/brand/woori-mascots.png"
+            ? "/brand/tongyang-gelodi.png"
+            : "/brand/tongyang-family.png"
         }
         alt={label}
         draggable="false"

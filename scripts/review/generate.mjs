@@ -54,8 +54,8 @@ try {
     return `data:${mime[path.extname(name)]};base64,${(await readFile(path.join(root, "public", name))).toString("base64")}`;
   }
   for (const name of [
-    "brand/woori-mascots.png",
-    "brand/woori-guide.png",
+    "brand/tongyang-family.png",
+    "brand/tongyang-gelodi.png",
     "forms/security-pledge.png",
     "forms/security-pledge.pdf",
     "forms/privacy-consent.png",

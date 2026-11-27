@@ -1,0 +1,559 @@
+/* Presentation only. Guardian Blue is a screen approximation of the user's captures,
+   not an asserted official RGB conversion of Pantone 2925 C. */
+:root {
+  --guardian-blue: #5f97c8;
+  --guardian-strong: #2b679b;
+  --guardian-soft: #edf5fc;
+  --guardian-gray: #4b535a;
+  --guardian-line: #dce3e9;
+  --guardian-gold: #e8c57d;
+  --primary: #2b679b;
+  --primary-active: #21547f;
+  --blue: #2b679b;
+  --work-blue: #2b679b;
+  --ink: #242c34;
+  --work-ink: #242c34;
+  --body: #45535f;
+  --text: #2c3741;
+  --work-muted: #53616d;
+  --mute: #526572;
+  --muted: #526572;
+  --canvas: #f7f8fa;
+  --surface: #fff;
+  --surface-raised: #f3f6f9;
+  --hairline: #dce3e9;
+  --hairline-soft: #dce3e9;
+  --work-line: #dce3e9;
+}
+body,
+.app-shell,
+.workspace-main {
+  background: #f7f8fa;
+  color: #2c3741;
+}
+h1,
+h2,
+h3 {
+  color: #242c34;
+}
+.app-shell > .sidebar {
+  background: #fff;
+  border-right-color: #dce3e9;
+  color: #354550;
+}
+.app-shell .sidebar .brand > span.brand-wordmark {
+  color: #2b679b;
+  -webkit-text-fill-color: currentColor;
+}
+.app-shell .sidebar .brand-wordmark small {
+  color: #4a687e;
+  -webkit-text-fill-color: currentColor;
+  letter-spacing: 0.3px;
+  font-size: 9px;
+  line-height: 1.6;
+}
+.app-shell .sidebar .nav-label,
+.app-shell .sidebar .workspace-label {
+  color: #526573;
+  -webkit-text-fill-color: currentColor;
+}
+.app-shell .sidebar .workspace-label > span {
+  color: #2b679b;
+  border-color: #c3d8e9;
+  background: #f1f7fc;
+}
+.app-shell .sidebar .brand-mark {
+  background: #5f97c8;
+  color: #fff;
+  border-radius: 12px;
+  box-shadow: none;
+}
+.app-shell .sidebar .brand-mark > span {
+  background: #ecd58a;
+}
+.app-shell .sidebar .workspace-icon {
+  background: #fff;
+  color: #2b679b;
+}
+.app-shell .sidebar .workspace-switch {
+  background: #f4f7fa;
+  border-color: #d5e1eb;
+  color: #2f4b60;
+  box-shadow: none;
+}
+.app-shell .sidebar .workspace-switch > span,
+.app-shell .sidebar .workspace-switch strong,
+.app-shell .sidebar .workspace-switch svg:last-child {
+  color: #2d4e66;
+}
+.app-shell .sidebar .workspace-switch small {
+  color: #536b7d;
+}
+.app-shell .sidebar .nav-item {
+  color: #445765;
+}
+.app-shell .sidebar .nav-item.active {
+  color: #235f92;
+  background: #eaf3fb;
+  border: 1px solid #c7dff0;
+  box-shadow: none;
+}
+.app-shell .sidebar .nav-item.active > i {
+  background: #5f97c8;
+}
+.app-shell .sidebar .nav-item:not(.active):hover {
+  background: #f1f6fa;
+  color: #245f92;
+}
+.app-shell .sidebar .nav-divider {
+  background: #e2e7ed;
+  border-color: #e2e7ed;
+}
+.app-shell .sidebar .sidebar-help,
+.app-shell .sidebar .sidebar-user span {
+  color: #4a6274;
+}
+.app-shell .sidebar .sidebar-user {
+  border-color: #e0e6ec;
+}
+.app-shell .sidebar .sidebar-user strong {
+  color: #263b4a;
+}
+.app-shell .sidebar .sidebar-user .icon-btn {
+  color: #4f6e84;
+}
+.app-shell .sidebar .user-avatar {
+  background: #eaf3fb;
+  color: #2b679b;
+}
+.app-shell .sidebar .assistant-entry {
+  background: #edf5fc;
+  color: #2b679b;
+  border-color: #c9deef;
+}
+.app-shell .sidebar .member-subnav {
+  border-left-color: #cfdfeb;
+}
+.app-shell .sidebar .member-subnav .nav-item.active {
+  background: #edf5fc;
+  border-color: #c8deed;
+  color: #245f92;
+}
+.app-shell .topbar {
+  background: #fff;
+  border-bottom-color: #dce3e9;
+  color: #354550;
+}
+.app-shell .topbar .breadcrumb,
+.app-shell .topbar .breadcrumb strong,
+.app-shell .topbar .breadcrumb > span,
+.app-shell .topbar .breadcrumb > svg,
+.app-shell .topbar .icon-btn,
+.app-shell .topbar .scope-selector select {
+  color: #334d61;
+}
+.app-shell .topbar .scope-selector select {
+  background: #fff;
+}
+.topbar .mode-switch {
+  background: #f1f6fa !important;
+  border-color: #d4e1eb !important;
+}
+.topbar .mode-switch button,
+.topbar .mode-switch > span {
+  color: #2b5b7c !important;
+}
+.topbar .mode-switch button.selected {
+  background: #e3f0fa !important;
+  color: #245f92 !important;
+}
+.topbar .header-divider {
+  background: #d9e3eb;
+}
+.app-shell .topbar .scope-dot {
+  background: #5f97c8;
+}
+.app-shell .topbar .top-avatar {
+  background: #eaf3fb;
+  color: #2b679b;
+}
+.app-shell .sidebar :is(button, a):focus-visible,
+.app-shell .topbar :is(button, a, select):focus-visible {
+  outline-color: #2b679b;
+  box-shadow: 0 0 0 1px #fff;
+}
+.app-shell > .sidebar {
+  scrollbar-color: #b1c8da #fff;
+}
+.card,
+.work-card {
+  border-color: #dce3e9;
+  box-shadow: 0 2px 9px #394a5804;
+}
+.work-title,
+.dashboard-welcome,
+.onboarding-intro {
+  background:
+    radial-gradient(ellipse at 94% 18%, #dcecf9 0, transparent 32%),
+    linear-gradient(110deg, #fff 30%, #edf5fc 100%);
+  border-color: #d9e6f0;
+}
+.work-title::before,
+.work-title::after,
+.dashboard-welcome::before,
+.dashboard-welcome::after,
+.onboarding-intro::before,
+.onboarding-intro::after {
+  display: none !important;
+}
+.work-title h1,
+.page-heading h1,
+.dashboard-welcome h1 {
+  color: #242c34;
+}
+.work-title p,
+.work-title small,
+.page-heading p {
+  color: #4a6276;
+}
+.eyebrow {
+  color: #2b679b;
+}
+.work-card h2,
+.work-card h3 {
+  color: #2b3c49;
+}
+.work-card-heading h2 {
+  border-left-color: #7faed3;
+}
+.work-card-heading p {
+  color: #526777;
+}
+.work-stat {
+  border-color: #d5e1eb;
+  border-top-color: #5f97c8;
+  background: linear-gradient(140deg, #fff 65%, #f0f6fb);
+}
+.work-stat strong {
+  color: #2b679b;
+}
+.work-stat:nth-child(2) {
+  border-top-color: #c4a16b;
+}
+.work-stat:nth-child(2) strong {
+  color: #876025;
+}
+.work-stat:nth-child(3) {
+  border-top-color: #7da6a2;
+}
+.work-stat:nth-child(3) strong {
+  color: #296e65;
+}
+.work-stat:nth-child(4) {
+  border-top-color: #8d98aa;
+}
+.work-stat:nth-child(4) strong {
+  color: #52627c;
+}
+.work-stat,
+.work-stat > span:first-child,
+.work-stat .stat-foot {
+  color: #486174;
+}
+.work-stat:hover {
+  border-color: #9cbfda;
+  box-shadow: 0 3px 10px #30628a0d;
+}
+.app-shell .btn.primary,
+.access-page .btn.primary,
+.invitation-form .btn.primary,
+.online-document .btn.primary {
+  background: #2b679b;
+  border-color: #2b679b;
+  color: #fff;
+  box-shadow: none;
+}
+.app-shell .btn.primary:hover,
+.access-page .btn.primary:hover,
+.invitation-form .btn.primary:hover {
+  background: #21547f;
+  border-color: #21547f;
+}
+.app-shell .btn:not(.primary) {
+  background: #fff;
+  border-color: #c5d8e7;
+  color: #2d5e83;
+}
+.text-link,
+.person-name {
+  color: #2b679b;
+}
+.app-shell .icon-btn {
+  color: #3f657f;
+}
+.app-shell :is(input, select, textarea) {
+  color: #2f4251;
+  border-color: #cfdae3;
+}
+.app-shell :is(input, select, textarea):focus {
+  border-color: #5f97c8;
+  box-shadow: 0 0 0 3px #5f97c81a;
+}
+.app-shell :is(button, input, select, textarea, a):focus-visible {
+  outline-color: #2b679b;
+}
+.completion-bar i,
+.work-progress i,
+.roadmap-progress-bar i {
+  background: #5f97c8;
+}
+.completion-card .completion-count,
+.completion-card .completion-count b {
+  color: #355e7f;
+}
+.admin-stage-column,
+.perf-stages button {
+  background: #f5f8fb;
+  border-color: #d2e0eb;
+  border-top-color: #7eadd2;
+}
+.admin-stage-open:hover {
+  background: #edf4fa;
+}
+.admin-stage-open > strong,
+.admin-stage-heading h3 {
+  color: #2f536d;
+}
+.admin-stage-totals > b,
+.admin-stage-heading strong,
+.stage-open-link,
+.admin-stage-number {
+  color: #2b679b;
+}
+.admin-stage-number {
+  border-color: #c6dcea;
+  background: #fff;
+}
+.admin-stage-detail-summary,
+.perf-cohort-note {
+  background: #f0f6fb;
+  border-color: #d5e3ee;
+  color: #365c79;
+}
+.admin-stage-detail-summary > strong {
+  color: #2b679b;
+}
+.project-preparation {
+  background: #f7f9fb;
+  border-color: #d6e1e9;
+}
+.project-preparation .project-completion-rate {
+  color: #2b679b;
+}
+.member-roadmap .roadmap-steps > li.current button {
+  background: #edf5fc;
+  border-color: #5f97c8;
+}
+.member-roadmap .roadmap-steps > li.current .roadmap-step-number {
+  background: #3c7fb7;
+  border-color: #3c7fb7;
+}
+.member-task-tabs button.active,
+.perf-tabs button.active {
+  color: #2b679b;
+  border-bottom-color: #5f97c8;
+}
+.perf-source,
+.perf-filter-card > p,
+.perf-comparison-caption,
+.perf-comparison-footnote {
+  color: #49677c;
+}
+.perf-team-toggle button {
+  border-color: #ccddea;
+  color: #35607f;
+}
+.perf-team-toggle button[aria-pressed="true"] {
+  background: #2b679b;
+  border-color: #2b679b;
+  color: #fff;
+  box-shadow: none;
+}
+.perf-comparison-group,
+.perf-person-card:hover {
+  background: #f6f9fc;
+  border-color: #d3e1eb;
+}
+.perf-comparison-label > b,
+.perf-person-values b,
+.perf-stages button > b {
+  color: #2b679b;
+}
+.perf-person-heading strong,
+.perf-comparison-group > header > strong,
+.perf-axis-title {
+  color: #2d506a;
+  fill: #2d506a;
+}
+.perf-assigned-bar {
+  fill: #bfd9ed;
+}
+.perf-completed-bar {
+  fill: #4585b9;
+}
+.perf-cycle-bar {
+  fill: #8a88a8;
+}
+.perf-axis-legend rect[fill="#b8d8ee"] {
+  fill: #bfd9ed;
+}
+.perf-axis-legend rect[fill="#267eaf"] {
+  fill: #4585b9;
+}
+.perf-axis-legend rect[fill="#8178b3"] {
+  fill: #8a88a8;
+}
+.perf-axis-grid {
+  stroke: #dfe8ee;
+}
+.perf-axis-readout {
+  background: #f1f6fa;
+  border-color: #d6e2ec;
+}
+.perf-axis-readout > strong {
+  color: #2b679b;
+}
+.perf-axis-hit:focus-visible > rect {
+  stroke: #2b679b;
+}
+.perf-matrix thead th,
+.perf-requests th {
+  background: #eef4f9;
+  color: #355a75;
+  border-color: #d3e1eb;
+}
+.perf-matrix .perf-matrix-group th {
+  background: #f3f7fa;
+  color: #3f6078;
+}
+.perf-comparison .on-time,
+.perf-person-bar i:not(.late):not(.unknown),
+.perf-stacked i:not(.late):not(.unknown) {
+  background: #4585b9;
+}
+.perf-duration-chart .perf-bar-track i {
+  background: #659ac5;
+}
+.perf-matrix-person td[data-metric="assigned"] .perf-matrix-bar > i,
+.perf-matrix-person td[data-metric="onTimeRate"] .perf-matrix-bar > i {
+  background: #4585b9;
+}
+.perf-matrix-person td[data-metric="medianAssignedCycle"] .perf-matrix-bar > i {
+  background: #8a88a8;
+}
+.modal > header,
+.performance-dialog > header {
+  background: #f1f6fa;
+  border-bottom-color: #d9e4ed;
+}
+.modal h2,
+.performance-dialog h2 {
+  color: #293e4f;
+}
+.performance-dialog .perf-request-facts dt {
+  color: #345b77;
+}
+.inbox-settings,
+.inbox-reading-header,
+.mail-change-overview,
+.mail-applied-result {
+  border-color: #d5e1eb;
+}
+.inbox-toolbar,
+.mail-inbox th {
+  background: #f5f8fb;
+}
+.inbox-message.selected,
+.inbox-list-item.selected {
+  background: #edf5fc;
+  border-color: #bdd7ea;
+}
+.access-brand {
+  background:
+    radial-gradient(ellipse at 70% 75%, #d9eaf8 0, transparent 48%), #f3f7fb;
+  border-color: #dce6ef;
+  color: #2c4e68;
+}
+.access-brand h1,
+.access-brand h2 {
+  color: #2e5f86;
+}
+.registration-basic,
+.invitation-form > .card-heading {
+  background: #f1f7fb;
+  border-color: #d4e3ef;
+}
+.invitation-form h1,
+.invitation-form h2 {
+  color: #2d506a;
+}
+.brand-characters {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+}
+.brand-characters img {
+  position: static !important;
+  display: block;
+  max-width: 100% !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+  object-position: center;
+  transform: none !important;
+}
+.cast-group {
+  line-height: 0;
+}
+.work-mascot.cast-group {
+  width: 150px !important;
+  height: 74px !important;
+}
+.cast-character,
+.cast-guide {
+  width: calc(var(--cast-height, 100px) * 0.85);
+  height: var(--cast-height, 100px);
+}
+.assistant-entry .brand-characters {
+  width: 36px;
+  height: 44px;
+}
+.work-title .work-mascot.cast-guide {
+  width: 60px !important;
+  height: 70px !important;
+}
+.access-brand .cast-group {
+  height: 210px;
+}
+.ai-panel-mark .cast-guide {
+  width: 35px;
+  height: 46px;
+}
+.page-footer {
+  color: #536b7d;
+  border-top-color: #e2e7ed;
+}
+@media (max-width: 750px) {
+  .work-mascot.cast-group {
+    width: 110px !important;
+    height: 58px !important;
+  }
+  .work-title .work-mascot.cast-guide {
+    width: 45px !important;
+    height: 54px !important;
+  }
+  .app-shell .sidebar .brand-wordmark small {
+    font-size: 9px;
+  }
+}

@@ -12,6 +12,7 @@ import "../../src/readyboard-ui.css";
 import "../../src/server-ui.css";
 import "../../src/mail-ui.css";
 import "../../src/work-ui.css";
+import "../../src/tongyang-theme.css";
 const controller = await installDemoApi(dataset.stages.before);
 // This flag only selects offline labels/routing; the production app continues to use its server.
 function download(blob, name) {

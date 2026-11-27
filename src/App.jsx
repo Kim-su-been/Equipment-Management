@@ -2626,7 +2626,7 @@ export default function App({ initialState, actor, onLogout }) {
     return null;
   }
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-brand="tongyang">
       <aside
         inert={modal ? true : undefined}
         className={cx("sidebar", mobile && "open")}
@@ -2640,7 +2640,7 @@ export default function App({ initialState, actor, onLogout }) {
             R<span />
           </span>
           <span className="brand-wordmark">
-            레디보드<small>READYBOARD · PROJECT PEOPLE</small>
+            레디보드<small>수호천사 동양생명 · READYBOARD</small>
           </span>
         </button>
         <div className="workspace-label">
