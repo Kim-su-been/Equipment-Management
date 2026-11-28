@@ -2643,14 +2643,6 @@ export default function App({ initialState, actor, onLogout }) {
             파트너360<small>PARTNER360 · PEOPLE</small>
           </span>
         </button>
-        <div className="tongyang-ci">
-          <img
-            src="/brand/tongyang-ci.svg"
-            alt="수호천사동양생명"
-            width="166"
-            height="25"
-          />
-        </div>
         <div className="workspace-label">
           WORKSPACE<span>PROTOTYPE</span>
         </div>
@@ -2789,6 +2781,14 @@ export default function App({ initialState, actor, onLogout }) {
             <span>워크스페이스</span>
             <ChevronRight size={14} />
             <strong>{screenTitle}</strong>
+          </div>
+          <div className="tongyang-ci">
+            <img
+              src="/brand/tongyang-ci.svg"
+              alt="수호천사동양생명"
+              width="166"
+              height="25"
+            />
           </div>
           <div className="topbar-actions">
             {!globalThis.__READYBOARD_OFFLINE__ && (

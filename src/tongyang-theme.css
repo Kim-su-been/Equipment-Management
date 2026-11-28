@@ -54,11 +54,13 @@ h3 {
   font-size: 9px;
   line-height: 1.6;
 }
-.tongyang-ci {
+.topbar .tongyang-ci {
+  grid-area: ci;
+  justify-self: center;
   width: 166px;
-  max-width: calc(100% - 32px);
+  max-width: 100%;
   height: 33px;
-  margin: 4px 16px 17px;
+  margin: 0;
   padding: 5px 9px;
   display: flex;
   align-items: center;
@@ -163,9 +165,27 @@ h3 {
   color: #245f92;
 }
 .app-shell .topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-areas: "breadcrumb ci actions";
+  column-gap: 16px;
   background: #5f97c8;
   border-bottom-color: #5087b7;
   color: #142b3d;
+}
+.topbar > .breadcrumb {
+  grid-area: breadcrumb;
+  min-width: 0;
+}
+.topbar > .breadcrumb strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.topbar > .topbar-actions {
+  grid-area: actions;
+  justify-self: end;
 }
 .app-shell .topbar .breadcrumb,
 .app-shell .topbar .breadcrumb strong,
@@ -588,5 +608,27 @@ h3 {
   }
   .app-shell .sidebar .brand-wordmark small {
     font-size: 9px;
+  }
+}
+
+/* Keep the CI centered without covering page controls on narrower screens. */
+@media (max-width: 1200px) {
+  .app-shell .topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "ci ci" "breadcrumb actions";
+    height: auto;
+    min-height: 94px;
+    padding: 8px 18px;
+    row-gap: 6px;
+  }
+  .topbar .tongyang-ci {
+    height: 30px;
+    width: 160px;
+  }
+}
+@media (max-width: 750px) {
+  .app-shell .topbar {
+    column-gap: 8px;
+    padding: 8px 14px;
   }
 }
