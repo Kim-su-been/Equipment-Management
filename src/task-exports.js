@@ -235,6 +235,6 @@ export async function exportTaskWorkbook(data, scope, selection) {
     blob: new Blob([await workbook.xlsx.writeBuffer()], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     }),
-    name: `레디보드_${template.title}_${selection.project}.xlsx`,
+    name: `파트너360_${template.title}_${selection.project}.xlsx`,
   };
 }

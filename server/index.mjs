@@ -51,7 +51,7 @@ const app = createApplication({
 });
 app.server.listen(port, host, () =>
   console.log(
-    `Readyboard server: http://${host}:${port} · SQLite persistence enabled`,
+    `Partner360 server: http://${host}:${port} · SQLite persistence enabled`,
   ),
 );
 for (const signal of ["SIGINT", "SIGTERM"])

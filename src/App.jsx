@@ -756,7 +756,7 @@ export default function App({ initialState, actor, onLogout }) {
     });
     download(
       blob,
-      `레디보드_${kind === "template" ? "인원등록_템플릿" : "인원현황"}.xlsx`,
+      `파트너360_${kind === "template" ? "인원등록_템플릿" : "인원현황"}.xlsx`,
     );
     notify("엑셀 파일을 다운로드했습니다.");
   }
@@ -2496,7 +2496,7 @@ export default function App({ initialState, actor, onLogout }) {
             <ol className="guide-list">
               <li>담당자가 제공하는 교육 사이트에서 수강합니다.</li>
               <li>교육을 마치면 수료증을 발급받습니다.</li>
-              <li>레디보드의 교육 화면에서 수료증을 등록합니다.</li>
+              <li>파트너360의 교육 화면에서 수료증을 등록합니다.</li>
             </ol>
             <div className="notice">
               <AlertCircle size={17} />이 화면은 시연용 안내입니다. 실제
@@ -2586,13 +2586,13 @@ export default function App({ initialState, actor, onLogout }) {
     if (modal.type === "help")
       return (
         <Modal
-          title="레디보드 프로토타입 안내"
+          title="파트너360 프로토타입 안내"
           subtitle="프로젝트의 시작을 연결하는 인력 투입관리 워크스페이스"
           onClose={close}
         >
           <div className="modal-body help-body">
             <div className="help-brand">
-              R<span>레디보드</span>
+              P<span>파트너360</span>
             </div>
             <h3>이렇게 시연해 보세요</h3>
             <ol className="guide-list">
@@ -2634,13 +2634,13 @@ export default function App({ initialState, actor, onLogout }) {
         <button
           className="brand"
           onClick={() => go("dashboard")}
-          aria-label="레디보드 홈"
+          aria-label="파트너360 홈"
         >
           <span className="brand-mark">
-            R<span />
+            P<span />
           </span>
           <span className="brand-wordmark">
-            레디보드<small>READYBOARD · PEOPLE</small>
+            파트너360<small>PARTNER360 · PEOPLE</small>
           </span>
         </button>
         <div className="tongyang-ci">
@@ -2945,7 +2945,7 @@ export default function App({ initialState, actor, onLogout }) {
           )}
           <div className="page-footer">
             <span>
-              레디보드 <i>·</i> 프로젝트의 시작을 연결하다
+              파트너360 <i>·</i> 프로젝트의 시작을 연결하다
             </span>
             <span>
               DEMO WORKSPACE <b>·</b> 2026
@@ -3030,7 +3030,7 @@ export default function App({ initialState, actor, onLogout }) {
               <BrandCharacters focus="guide" />
             </span>
             <div>
-              <h2>레디보드 AI</h2>
+              <h2>파트너360 AI</h2>
               <p>현재 화면에 맞춘 업무 도우미</p>
             </div>
             <button

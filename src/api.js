@@ -20,7 +20,7 @@ export async function api(path, options = {}) {
     result = await response.json();
   } catch {
     throw new Error(
-      "서버 응답을 확인할 수 없습니다. 레디보드 서버를 실행해 주세요.",
+      "서버 응답을 확인할 수 없습니다. 파트너360 서버를 실행해 주세요.",
     );
   }
   if (!response.ok) {

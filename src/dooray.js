@@ -47,7 +47,7 @@ export function buildDoorayMessage(person, task, title, body, status, route) {
     recipientName: route.name,
     project: person.project,
     taskId: task.id,
-    text: `[레디보드 문의] ${title}\n프로젝트: ${person.project}\n문의자: ${person.name || person.id} (${person.id})\n관련 작업: ${task.title}\n현재 상태: ${status}\n담당자: ${route.name}\n\n${body}`,
+    text: `[파트너360 문의] ${title}\n프로젝트: ${person.project}\n문의자: ${person.name || person.id} (${person.id})\n관련 작업: ${task.title}\n현재 상태: ${status}\n담당자: ${route.name}\n\n${body}`,
     delivery: "not_connected",
     idempotencyKey: crypto.randomUUID(),
   };

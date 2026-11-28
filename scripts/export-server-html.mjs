@@ -82,7 +82,7 @@ try {
     path.join(root, "public/fonts/Inter-LICENSE.txt"),
     "utf8",
   );
-  html += `\n<!--\nServer-connected UI export. Registration, shared state and evidence require Readyboard server/SQLite.\n${notices}\n${license}\n-->\n`;
+  html += `\n<!--\nServer-connected UI export. Registration, shared state and evidence require Partner360 server/SQLite.\n${notices}\n${license}\n-->\n`;
   await mkdir(path.dirname(output), { recursive: true });
   await writeFile(output, html);
   await chmod(output, 0o644);
@@ -91,10 +91,10 @@ try {
     path.dirname(output),
     `${path.basename(output, path.extname(output))}.zip`,
   );
-  const instructions = `레디보드 HTML 화면 자산
+  const instructions = `파트너360 HTML 화면 자산
 
 이 파일에는 화면 자산만 포함됩니다.
-인원 등록·개인 초대 링크·서류와 상태 공유에는 레디보드 서버와 SQLite DB가 필요합니다.
+인원 등록·개인 초대 링크·서류와 상태 공유에는 파트너360 서버와 SQLite DB가 필요합니다.
 저장소의 .env.example과 README를 참고하여 npm ci, 환경변수 설정, npm run dev로 실행해 주세요.
 HTML 파일을 직접 열면 서버 연결 안내가 표시됩니다.
 `;

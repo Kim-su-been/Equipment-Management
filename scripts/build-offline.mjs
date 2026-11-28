@@ -15,5 +15,5 @@ await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
 await copyFile(source, path.join(output, "index.html"));
 console.log(
-  "Readyboard static deployment: dist/index.html · offline browser storage · no runtime API",
+  "Partner360 static deployment: dist/index.html · offline browser storage · no runtime API",
 );

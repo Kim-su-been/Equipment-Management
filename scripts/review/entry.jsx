@@ -148,7 +148,7 @@ function Demo() {
           </header>
           <div className="demo-description">
             <b>
-              레디보드 · HTML 단독 시연{" "}
+              파트너360 · HTML 단독 시연{" "}
               <small className="demo-build">
                 {document.querySelector('meta[name="readyboard-build"]')
                   ?.content || "브라우저 모드"}
@@ -205,7 +205,7 @@ function Demo() {
               disabled={busy}
               onClick={() =>
                 run(async () => {
-                  download(await controller.backup(), "레디보드_시연백업.json");
+                  download(await controller.backup(), "파트너360_시연백업.json");
                   setMessage("명단·파일·초대·메일 이력을 백업했습니다.");
                 })
               }

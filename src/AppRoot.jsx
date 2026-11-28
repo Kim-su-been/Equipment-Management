@@ -32,7 +32,7 @@ export default function AppRoot() {
   if (invite) return <InvitePortal token={invite} onComplete={complete} />;
   if (loading)
     return (
-      <div className="access-loading">레디보드 서버에 연결하고 있습니다.</div>
+      <div className="access-loading">파트너360 서버에 연결하고 있습니다.</div>
     );
   if (!resource?.actor || error)
     return (

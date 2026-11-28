@@ -373,7 +373,7 @@ export default function PerformancePage({ actor, scope }) {
         url = URL.createObjectURL(blob),
         a = document.createElement("a");
       a.href = url;
-      a.download = `레디보드_SDLC_${filter.project}_${filter.from}_${filter.to}.xlsx`;
+      a.download = `파트너360_SDLC_${filter.project}_${filter.from}_${filter.to}.xlsx`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 10000);
     } catch (e) {
@@ -794,7 +794,7 @@ export default function PerformancePage({ actor, scope }) {
           {detail.type === "source" && (
             <div className="perf-definitions">
               <p>
-                <b>가상 그룹웨어 응답</b>을 레디보드가 수집한 상황을 시연합니다.
+                <b>가상 그룹웨어 응답</b>을 파트너360이 수집한 상황을 시연합니다.
                 실제 ITGS·그룹웨어 API와 AI 모델은 호출하지 않습니다.
               </p>
               <p>

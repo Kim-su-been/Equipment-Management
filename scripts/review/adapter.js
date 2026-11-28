@@ -947,7 +947,7 @@ export async function installDemoApi(
           throw new Error("100MB 이하의 백업을 선택해 주세요.");
         const input = JSON.parse(await file.text());
         if (input.format !== "readyboard-offline-backup" || input.version !== 1)
-          throw new Error("레디보드 시연 백업 파일을 선택해 주세요.");
+          throw new Error("파트너360 시연 백업 파일을 선택해 주세요.");
         const next = unpackBackup(input.workspace);
         if (
           !next ||

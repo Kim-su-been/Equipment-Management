@@ -52,7 +52,7 @@ export default function OriginalDocument({
         </label>
         <a
           href={template.pdfUrl}
-          download={`레디보드_${template.title}_원본예시.pdf`}
+          download={`파트너360_${template.title}_원본예시.pdf`}
         >
           <Download size={14} />
           원본 PDF

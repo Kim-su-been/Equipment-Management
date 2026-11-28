@@ -95,8 +95,8 @@ export default function AccessPortal({ resource, onLogin, onReload, error }) {
   return (
     <main className="access-page">
       <section className="access-brand">
-        <span className="eyebrow">READYBOARD</span>
-        <h1>레디보드</h1>
+        <span className="eyebrow">PARTNER360</span>
+        <h1>파트너360</h1>
         <h2>
           사람과 프로젝트의
           <br />
@@ -230,7 +230,7 @@ export function InvitePortal({ token, onComplete }) {
     <main className="invitation-page">
       <header>
         <span className="invitation-logo">R</span>
-        <strong>레디보드</strong>
+        <strong>파트너360</strong>
         <span>개인 초대 등록</span>
       </header>
       {busy ? (
